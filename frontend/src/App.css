@@ -1,0 +1,52 @@
+body {
+  background-image: url('./background.png');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  min-height: 100vh;
+  margin: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+.container {
+  font-family: 'Impact', sans-serif;
+  color: yellow;
+  text-align: center;
+  padding: 20px;
+  background-color: rgba(0, 0, 0, 0.5);
+  border-radius: 10px;
+}
+h1, h2 {
+  font-weight: bold;
+}
+.input {
+  display: block;
+  margin: 10px auto;
+  padding: 10px;
+  width: 80%;
+  max-width: 300px;
+  border: 2px solid yellow;
+  background: transparent;
+  color: yellow;
+  font-family: 'Impact', sans-serif;
+}
+.button {
+  background-color: yellow;
+  color: black;
+  padding: 10px 20px;
+  margin: 10px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-family: 'Impact', sans-serif;
+}
+.join-button {
+  margin-left: 10px;
+}
+.auth-form, .room-form {
+  margin-bottom: 20px;
+}
+.room-item {
+  margin: 10px 0;
+}
