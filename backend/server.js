@@ -89,18 +89,18 @@ app.post('/api/rooms', auth, async (req, res) => {
 });
 
 app.post('/api/rooms/:id/join', auth, async (req, res) => {
-    const room = await Room.findOne({ roomId: req.params.id });
-    if (!room || room.status !== 'open') return res.status(400).json({ error: 'Room unavailable' });
-    if (req.user.foxyPesos < room.wager) return res.status(400).json({ error: 'Insufficient Foxy Pesos' });
-    req.user.foxyPesos -= room.wager;
-    await req.user.save();
-    room.player2 = req.user._id;
-    room.status = 'active';
-    room.currentMax = room.wager;
-    room.currentPlayer = room.player1;
-    await room.save();
-    io.emit('playerJoined', room);
-    res.json(room);
+  const room = await Room.findOne({ roomId: req.params.id });
+  if (!room || room.status !== 'open') return res.status(400).json({ error: 'Room unavailable' });
+  if (req.user.foxyPesos < room.wager) return res.status(400).json({ error: 'Insufficient Foxy Pesos' });
+  req.user.foxyPesos -= room.wager;
+  await req.user.save();
+  room.player2 = req.user._id;
+  room.status = 'active';
+  room.currentMax = room.wager;
+  room.currentPlayer = room.player1; // Start with player1
+  await room.save();
+  io.emit('playerJoined', room); // Broadcast to all clients, including the creator
+  res.json(room);
 });
 
 app.post('/api/rooms/:id/roll', auth, async (req, res) => {
@@ -111,17 +111,17 @@ app.post('/api/rooms/:id/roll', auth, async (req, res) => {
     room.rolls.push({ player: req.user._id, value: rollValue });
     io.emit('rollResult', { roomId: room.roomId, player: req.user._id, value: rollValue });
 
-    if (rollValue === 1) {
-        const winnerId = room.currentPlayer === room.player1 ? room.player2 : room.player1;
-        const winner = await User.findById(winnerId);
-        winner.foxyPesos += room.wager * 2;
-        await winner.save();
-        room.status = 'closed';
-        io.emit('gameEnded', { roomId: room.roomId, winner: winnerId });
-    } else {
-        room.currentMax = rollValue;
-        room.currentPlayer = room.currentPlayer === room.player1 ? room.player2 : room.player1;
-    }
+if (rollValue === 1) {
+    const winnerId = room.currentPlayer === room.player1 ? room.player2 : room.player1;
+    const winner = await User.findById(winnerId);
+    winner.foxyPesos += room.wager * 2;
+    await winner.save();
+    room.status = 'closed';
+    io.emit('gameEnded', { roomId: room.roomId, winner: winnerId });
+} else {
+    room.currentMax = rollValue;
+    room.currentPlayer = room.currentPlayer === room.player1 ? room.player2 : room.player1;
+}
     await room.save();
     res.json({ rollValue });
 });
