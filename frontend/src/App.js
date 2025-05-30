@@ -104,11 +104,6 @@ const App = () => {
     try {
       const response = await axios.post(`${process.env.REACT_APP_API_URL}/api/rooms/${roomId}/roll`);
       console.log('Roll response:', response.data);
-      setGameState({ ...gameState, rolls: [...gameState.rolls, { player: user._id, value: response.data.rollValue }] });
-    } roll = async () => {
-    try {
-      const response = await axios.post(`${process.env.REACT_APP_API_URL}/api/rooms/${roomId}/roll`);
-      console.log('Roll response:', response.data);
       setGameState({ ...gameState, rolls: [...(gameState.rolls || []), { player: user._id, value: response.data.rollValue }] });
     } catch (error) {
       console.error('Error rolling:', error.message);
