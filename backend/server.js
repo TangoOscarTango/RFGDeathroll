@@ -102,7 +102,7 @@ app.post('/api/rooms/:id/join', auth, async (req, res) => {
   await req.user.save();
   room.player2 = req.user._id;
   room.status = 'active';
-  room.currentMax = room.wager;
+  room.currentMax = 5000; // Set to 5000 for ~10 rolls
   room.currentPlayer = room.player1;
   room.rolls = [];
   await room.save();
@@ -127,7 +127,11 @@ app.post('/api/rooms/:id/roll', auth, async (req, res) => {
     console.log('Not your turn - currentPlayer:', room.currentPlayer._id, 'user:', req.user._id);
     return res.status(400).json({ error: 'Not your turn' });
   }
-  const rollValue = crypto.randomInt(1, room.currentMax + 1);
+  const rollValue = crypto.randomInt(1, room.currentMax); // Changed to exclude currentMax
+  if (rollValue >= room.currentMax) {
+    console.log('Invalid roll value generated:', rollValue, 'exceeds currentMax:', room.currentMax);
+    return res.status(500).json({ error: 'Internal roll generation error' });
+  }
   room.rolls.push({ player: req.user._id, value: rollValue });
   io.emit('rollResult', { roomId: room.roomId, player: req.user._id, value: rollValue });
 
@@ -138,6 +142,7 @@ app.post('/api/rooms/:id/roll', auth, async (req, res) => {
     await winner.save();
     room.status = 'closed';
     io.emit('gameEnded', { roomId: room.roomId, winner: winnerId });
+    console.log('Game ended:', { roomId: room.roomId, winner: winnerId });
   } else {
     room.currentMax = rollValue;
     room.currentPlayer = room.currentPlayer.equals(room.player1) ? room.player2 : room.player1;
@@ -145,6 +150,13 @@ app.post('/api/rooms/:id/roll', auth, async (req, res) => {
   await room.save();
   console.log('Roll processed:', { roomId: room.roomId, rollValue });
   res.json({ rollValue });
+});
+
+app.post('/api/clear-rooms', auth, async (req, res) => {
+  await Room.deleteMany({});
+  console.log('All rooms cleared');
+  io.emit('roomsCleared');
+  res.json({ message: 'All rooms cleared' });
 });
 
 app.get('/api/rooms', async (req, res) => {
