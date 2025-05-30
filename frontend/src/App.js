@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import io from 'socket.io-client';
+import jwtDecode from 'jwt-decode'; // Added import
 import './App.css';
 
 const socket = io(process.env.REACT_APP_API_URL || 'http://localhost:3001');
@@ -55,7 +56,8 @@ const App = () => {
   const signup = async () => {
     try {
       const response = await axios.post(`${process.env.REACT_APP_API_URL}/api/signup`, { email, password });
-      setUser({ token: response.data.token, foxyPesos: response.data.foxyPesos, _id: jwt.decode(response.data.token).userId });
+      const decoded = jwtDecode(response.data.token); // Decode token
+      setUser({ token: response.data.token, foxyPesos: response.data.foxyPesos, _id: decoded.userId });
       axios.defaults.headers.common['Authorization'] = `Bearer ${response.data.token}`;
     } catch (error) {
       console.error('Error signing up:', error.message);
@@ -65,7 +67,8 @@ const App = () => {
   const login = async () => {
     try {
       const response = await axios.post(`${process.env.REACT_APP_API_URL}/api/login`, { email, password });
-      setUser({ token: response.data.token, foxyPesos: response.data.foxyPesos, _id: jwt.decode(response.data.token).userId });
+      const decoded = jwtDecode(response.data.token); // Decode token
+      setUser({ token: response.data.token, foxyPesos: response.data.foxyPesos, _id: decoded.userId });
       axios.defaults.headers.common['Authorization'] = `Bearer ${response.data.token}`;
     } catch (error) {
       console.error('Error logging in:', error.message);
