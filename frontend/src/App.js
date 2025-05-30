@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import io from 'socket.io-client';
-import jwtDecode from 'jwt-decode'; // Added import
+import jwtDecode from 'jwt-decode';
 import './App.css';
 
 const socket = io(process.env.REACT_APP_API_URL || 'http://localhost:3001');
@@ -14,23 +14,36 @@ const App = () => {
   const [rooms, setRooms] = useState([]);
   const [roomId, setRoomId] = useState(null);
   const [gameState, setGameState] = useState(null);
+  const [errorMessage, setErrorMessage] = useState('');
 
   useEffect(() => {
+    const checkActiveRoom = async () => {
+      if (user) {
+        const response = await axios.get(`${process.env.REACT_APP_API_URL}/api/rooms`);
+        const activeRoom = response.data.find(room => room.status === 'active' && (room.player1._id === user._id || (room.player2 && room.player2._id === user._id)));
+        if (activeRoom) {
+          setRoomId(activeRoom.roomId);
+          setGameState(activeRoom);
+        }
+      }
+    };
+
     socket.on('roomCreated', (room) => {
       console.log('Room created:', room);
       setRooms([...rooms, room]);
     });
     socket.on('playerJoined', (room) => {
+      console.log('Player joined:', room);
       setRooms(rooms.map(r => r.roomId === room.roomId ? room : r));
       if (room.roomId === roomId) {
-        console.log('Player joined, updating game state:', room);
+        console.log('Updating game state:', room);
         setGameState(room);
       }
     });
     socket.on('rollResult', (data) => {
       if (data.roomId === roomId) {
         console.log('Roll result received:', data);
-        setGameState({ ...gameState, rolls: [...(gameState.rolls || []), data] });
+        setGameState({ ...gameState, rolls: [...(gameState.rolls || []), data], currentMax: data.value, currentPlayer: data.player === gameState.player1._id ? gameState.player2._id : gameState.player1._id });
       }
     });
     socket.on('gameEnded', (data) => {
@@ -41,8 +54,9 @@ const App = () => {
       }
     });
     fetchRooms();
+    checkActiveRoom();
     return () => socket.disconnect();
-  }, [rooms, roomId, gameState]);
+  }, [rooms, roomId, gameState, user]);
 
   const fetchRooms = async () => {
     try {
@@ -56,7 +70,7 @@ const App = () => {
   const signup = async () => {
     try {
       const response = await axios.post(`${process.env.REACT_APP_API_URL}/api/signup`, { email, password });
-      const decoded = jwtDecode(response.data.token); // Decode token
+      const decoded = jwtDecode(response.data.token);
       setUser({ token: response.data.token, foxyPesos: response.data.foxyPesos, _id: decoded.userId });
       axios.defaults.headers.common['Authorization'] = `Bearer ${response.data.token}`;
     } catch (error) {
@@ -67,7 +81,7 @@ const App = () => {
   const login = async () => {
     try {
       const response = await axios.post(`${process.env.REACT_APP_API_URL}/api/login`, { email, password });
-      const decoded = jwtDecode(response.data.token); // Decode token
+      const decoded = jwtDecode(response.data.token);
       setUser({ token: response.data.token, foxyPesos: response.data.foxyPesos, _id: decoded.userId });
       axios.defaults.headers.common['Authorization'] = `Bearer ${response.data.token}`;
     } catch (error) {
@@ -76,16 +90,23 @@ const App = () => {
   };
 
   const createRoom = async () => {
+    const wagerValue = parseInt(wager);
+    if (isNaN(wagerValue) || wagerValue < 20) {
+      setErrorMessage('Wager must be at least 20 Foxy Pesos');
+      return;
+    }
     const originalFoxyPesos = user ? user.foxyPesos : 0;
     try {
-      console.log('Attempting to create room with wager:', wager);
-      const response = await axios.post(`${process.env.REACT_APP_API_URL}/api/rooms`, { wager: Math.max(20, parseInt(wager) || 0) });
+      console.log('Attempting to create room with wager:', wagerValue);
+      const response = await axios.post(`${process.env.REACT_APP_API_URL}/api/rooms`, { wager: wagerValue });
       console.log('Room created:', response.data);
       setRoomId(response.data.roomId);
       setGameState(response.data);
       fetchRooms();
+      setErrorMessage('');
     } catch (error) {
       console.error('Error creating room:', error.message);
+      setErrorMessage(error.response?.data?.error || 'Error creating room');
       if (user) setUser({ ...user, foxyPesos: originalFoxyPesos });
     }
   };
@@ -107,7 +128,6 @@ const App = () => {
     try {
       const response = await axios.post(`${process.env.REACT_APP_API_URL}/api/rooms/${roomId}/roll`);
       console.log('Roll response:', response.data);
-      setGameState({ ...gameState, rolls: [...(gameState.rolls || []), { player: user._id, value: response.data.rollValue }] });
     } catch (error) {
       console.error('Error rolling:', error.message);
     }
@@ -140,6 +160,7 @@ const App = () => {
       ) : (
         <>
           <p>Foxy Pesos: {user.foxyPesos}</p>
+          {errorMessage && <p className="error">{errorMessage}</p>}
           {!roomId ? (
             <>
               <div className="room-form">
@@ -157,7 +178,7 @@ const App = () => {
               <ul>
                 {rooms.map(room => (
                   <li key={room.roomId} className="room-item">
-                    Room {room.roomId} - Wager: {room.wager} FP
+                    Room {room.roomId} - Wager: {room.wager} FP - Status: {room.status}
                     {room.status === 'open' && (
                       <button onClick={() => joinRoom(room.roomId)} className="button join-button">Join</button>
                     )}
@@ -172,15 +193,15 @@ const App = () => {
                 <>
                   <p>Status: {gameState.status}</p>
                   <p>Current Max: {gameState.currentMax || 'N/A'}</p>
-                  <p>Current Player: {gameState.currentPlayer && user._id ? (gameState.currentPlayer.toString() === user._id.toString() ? 'You' : 'Opponent') : 'N/A'}</p>
+                  <p>Current Player: {gameState.currentPlayer && user._id ? (gameState.currentPlayer._id === user._id ? 'You' : 'Opponent') : 'N/A'}</p>
                   {gameState.rolls && gameState.rolls.map((roll, i) => (
-                    <p key={i}>{roll.player && user._id ? (roll.player.toString() === user._id.toString() ? 'You' : 'Opponent') : 'Unknown'} rolled: {roll.value}</p>
+                    <p key={i}>{roll.player && user._id ? (roll.player._id === user._id ? 'You' : 'Opponent') : 'Unknown'} rolled: {roll.value}</p>
                   ))}
-                  {gameState.status === 'active' && gameState.currentPlayer && user._id && gameState.currentPlayer.toString() === user._id.toString() && (
+                  {gameState.status === 'active' && gameState.currentPlayer && user._id && gameState.currentPlayer._id === user._id && (
                     <button onClick={roll} className="button">Roll</button>
                   )}
                   {gameState.status === 'closed' && (
-                    <p>Winner: {gameState.winner && user._id ? (gameState.winner.toString() === user._id.toString() ? 'You' : 'Opponent') : 'N/A'}</p>
+                    <p>Winner: {gameState.winner && user._id ? (gameState.winner === user._id ? 'You' : 'Opponent') : 'N/A'}</p>
                   )}
                 </>
               )}
