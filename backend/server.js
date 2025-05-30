@@ -13,7 +13,7 @@ const io = socketIo(server);
 const JWT_SECRET = process.env.JWT_SECRET;
 
 app.use(express.json());
-app.use(cors({ origin: 'https://deathroll-frontend.onrender.com' })); // Replace with your Render frontend URL after deployment
+app.use(cors({ origin: 'https://rfgdeathroll.onrender.com' })); // Replace with your Render frontend URL after deployment - DONE 05-29-25
 
 mongoose.connect(process.env.MONGODB_URI, { useNewUrlParser: true, useUnifiedTopology: true });
 
