@@ -49,9 +49,13 @@ const App = () => {
     socket.on('gameEnded', (data) => {
       if (data.roomId === roomId) {
         console.log('Game ended received:', data);
-        setGameState({ ...gameState, status: 'closed', winner: data.winner });
+        setGameState(prev => ({ ...prev, status: 'closed', winner: data.winner }));
         setRoomId(null); // Return to home screen
       }
+    });
+    socket.on('roomsCleared', () => {
+      setRooms([]);
+      if (!roomId) fetchRooms();
     });
     fetchRooms();
     checkActiveRoom();
@@ -133,6 +137,15 @@ const App = () => {
     }
   };
 
+  const clearRooms = async () => {
+    try {
+      await axios.post(`${process.env.REACT_APP_API_URL}/api/clear-rooms`);
+      console.log('Rooms cleared');
+    } catch (error) {
+      console.error('Error clearing rooms:', error.message);
+    }
+  };
+
   return (
     <div className="container">
       <h1>Death Roll</h1>
@@ -210,6 +223,25 @@ const App = () => {
               )}
             </div>
           )}
+          <button
+            onClick={clearRooms}
+            style={{
+              position: 'fixed',
+              bottom: '10px',
+              right: '10px',
+              width: '40px',
+              height: '40px',
+              background: 'transparent',
+              border: 'none',
+              cursor: 'pointer',
+              opacity: 0,
+              transition: 'opacity 0.3s',
+            }}
+            onMouseEnter={(e) => (e.target.style.opacity = 1)}
+            onMouseLeave={(e) => (e.target.style.opacity = 0)}
+          >
+            Clear Rooms
+          </button>
         </>
       )}
     </div>
