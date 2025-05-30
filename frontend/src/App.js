@@ -33,27 +33,15 @@ const App = () => {
     return () => socket.disconnect();
   }, [rooms, roomId, gameState]);
 
-  const fetchRooms = async () => {
-    const response = await axios.get('/api/rooms');
-    setRooms(response.data);
-  };
+const fetchRooms = async () => {
+  const response = await axios.get(`${process.env.REACT_APP_API_URL}/api/rooms`);
+  setRooms(response.data);
+};
 
-  const signup = async () => {
-    const response = await axios.post('/api/signup', { email, password });
-    setUser({ token: response.data.token, foxyPesos: response.data.foxyPesos });
-    axios.defaults.headers.common['Authorization'] = `Bearer ${response.data.token}`;
-  };
-
-  const login = async () => {
-    const response = await axios.post('/api/login', { email, password });
-    setUser({ token: response.data.token, foxyPesos: response.data.foxyPesos });
-    axios.defaults.headers.common['Authorization'] = `Bearer ${response.data.token}`;
-  };
-
-  const createRoom = async () => {
+const createRoom = async () => {
   try {
     console.log('Attempting to create room with wager:', wager);
-    const response = await axios.post('/api/rooms', { wager: parseInt(wager) });
+    const response = await axios.post(`${process.env.REACT_APP_API_URL}/api/rooms`, { wager: parseInt(wager) });
     console.log('Room created:', response.data);
     setRoomId(response.data.roomId);
     setGameState(response.data);
@@ -63,16 +51,16 @@ const App = () => {
   }
 };
 
-  const joinRoom = async (id) => {
-    const response = await axios.post(`/api/rooms/${id}/join`);
-    setRoomId(id);
-    setGameState(response.data);
-  };
+const joinRoom = async (id) => {
+  const response = await axios.post(`${process.env.REACT_APP_API_URL}/api/rooms/${id}/join`);
+  setRoomId(id);
+  setGameState(response.data);
+};
 
-  const roll = async () => {
-    const response = await axios.post(`/api/rooms/${roomId}/roll`);
-    setGameState({ ...gameState, rolls: [...gameState.rolls, { player: user._id, value: response.data.rollValue }] });
-  };
+const roll = async () => {
+  const response = await axios.post(`${process.env.REACT_APP_API_URL}/api/rooms/${roomId}/roll`);
+  setGameState({ ...gameState, rolls: [...gameState.rolls, { player: user._id, value: response.data.rollValue }] });
+};
 
   return (
     <div className="container">
