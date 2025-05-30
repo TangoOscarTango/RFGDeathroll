@@ -9,7 +9,13 @@ const cors = require('cors');
 
 const app = express();
 const server = http.createServer(app);
-const io = socketIo(server);
+const io = socketIo(server, {
+  cors: {
+    origin: 'https://rfgdeathroll-frontend.onrender.com',
+    methods: ['GET', 'POST'],
+    credentials: true
+  }
+});
 const JWT_SECRET = process.env.JWT_SECRET;
 
 app.use(express.json());
