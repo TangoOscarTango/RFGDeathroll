@@ -32,13 +32,13 @@ const UserSchema = new mongoose.Schema({
 });
 const RoomSchema = new mongoose.Schema({
   roomId: Number,
-  player1: String,
-  player2: String,
+  player1: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  player2: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   wager: Number,
   currentMax: Number,
-  currentPlayer: String,
+  currentPlayer: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   status: String,
-  rolls: [{ player: String, value: Number }],
+  rolls: [{ player: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, value: Number }],
 });
 const User = mongoose.model('User', UserSchema);
 const Room = mongoose.model('Room', RoomSchema);
@@ -76,6 +76,7 @@ app.post('/api/login', async (req, res) => {
 
 app.post('/api/rooms', auth, async (req, res) => {
   const { wager } = req.body;
+  if (wager < 20) return res.status(400).json({ error: 'Minimum wager is 20 Foxy Pesos' });
   if (req.user.foxyPesos < wager) return res.status(400).json({ error: 'Insufficient Foxy Pesos' });
   req.user.foxyPesos -= wager;
   await req.user.save();
@@ -93,7 +94,7 @@ app.post('/api/rooms', auth, async (req, res) => {
 });
 
 app.post('/api/rooms/:id/join', auth, async (req, res) => {
-  const room = await Room.findOne({ roomId: req.params.id });
+  const room = await Room.findOne({ roomId: parseInt(req.params.id) }).populate('player1 player2 currentPlayer');
   if (!room || room.status !== 'open') return res.status(400).json({ error: 'Room unavailable' });
   if (req.user.foxyPesos < room.wager) return res.status(400).json({ error: 'Insufficient Foxy Pesos' });
   req.user.foxyPesos -= room.wager;
@@ -110,15 +111,15 @@ app.post('/api/rooms/:id/join', auth, async (req, res) => {
 });
 
 app.post('/api/rooms/:id/roll', auth, async (req, res) => {
-  const room = await Room.findOne({ roomId: req.params.id });
+  const room = await Room.findOne({ roomId: parseInt(req.params.id) }).populate('player1 player2 currentPlayer');
   if (!room || room.status !== 'active') return res.status(400).json({ error: 'Room not active' });
-  if (room.currentPlayer !== req.user._id.toString()) return res.status(400).json({ error: 'Not your turn' });
+  if (room.currentPlayer.toString() !== req.user._id.toString()) return res.status(400).json({ error: 'Not your turn' });
   const rollValue = crypto.randomInt(1, room.currentMax + 1);
   room.rolls.push({ player: req.user._id, value: rollValue });
   io.emit('rollResult', { roomId: room.roomId, player: req.user._id, value: rollValue });
 
   if (rollValue === 1) {
-    const winnerId = room.currentPlayer === room.player1 ? room.player2 : room.player1;
+    const winnerId = room.currentPlayer.equals(room.player1) ? room.player2 : room.player1;
     const winner = await User.findById(winnerId);
     winner.foxyPesos += room.wager * 2;
     await winner.save();
@@ -126,7 +127,7 @@ app.post('/api/rooms/:id/roll', auth, async (req, res) => {
     io.emit('gameEnded', { roomId: room.roomId, winner: winnerId });
   } else {
     room.currentMax = rollValue;
-    room.currentPlayer = room.currentPlayer === room.player1 ? room.player2 : room.player1;
+    room.currentPlayer = room.currentPlayer.equals(room.player1) ? room.player2 : room.player1;
   }
   await room.save();
   console.log('Roll processed:', { roomId: room.roomId, rollValue });
@@ -134,7 +135,7 @@ app.post('/api/rooms/:id/roll', auth, async (req, res) => {
 });
 
 app.get('/api/rooms', async (req, res) => {
-  const rooms = await Room.find({ status: 'open' });
+  const rooms = await Room.find({ status: { $in: ['open', 'active'] } });
   res.json(rooms);
 });
 
