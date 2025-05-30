@@ -54,7 +54,11 @@ const App = () => {
     socket.on('rollResult', (data) => {
       if (data.roomId === roomId) {
         console.log('Roll result received:', data);
-        setGameState(prev => ({ ...prev, rolls: [...(prev.rolls || []), data], currentMax: data.value, currentPlayer: data.player === prev.player1._id ? prev.player2._id : prev.player1._id }));
+        setGameState(prev => {
+          const newRolls = [...(prev.rolls || []), data];
+          console.log('New rolls array:', newRolls);
+          return { ...prev, rolls: newRolls, currentMax: data.value, currentPlayer: data.player === prev.player1._id ? prev.player2._id : prev.player1._id };
+        });
       }
     });
     socket.on('gameEnded', (data) => {
@@ -92,7 +96,7 @@ const App = () => {
       const decoded = jwtDecode(response.data.token);
       setUser({ token: response.data.token, foxyPesos: response.data.foxyPesos, _id: decoded.userId });
       axios.defaults.headers.common['Authorization'] = `Bearer ${response.data.token}`;
-      toggleAudio(); // Start audio on first interaction
+      if (!isPlaying) toggleAudio(); // Start music only if off
     } catch (error) {
       console.error('Error signing up:', error.message);
     }
@@ -104,7 +108,7 @@ const App = () => {
       const decoded = jwtDecode(response.data.token);
       setUser({ token: response.data.token, foxyPesos: response.data.foxyPesos, _id: decoded.userId });
       axios.defaults.headers.common['Authorization'] = `Bearer ${response.data.token}`;
-      toggleAudio(); // Start audio on first interaction
+      if (!isPlaying) toggleAudio(); // Start music only if off
     } catch (error) {
       console.error('Error logging in:', error.message);
     }
@@ -279,7 +283,25 @@ const App = () => {
           >
             Clear Rooms
           </button>
-          {!user && <button onClick={toggleAudio} className="button">Toggle Music</button>}
+          <button
+            onClick={toggleAudio}
+            style={{
+              position: 'fixed',
+              bottom: '10px',
+              left: '10px',
+              width: '40px',
+              height: '40px',
+              background: 'transparent',
+              border: 'none',
+              cursor: 'pointer',
+              opacity: 0,
+              transition: 'opacity 0.3s',
+            }}
+            onMouseEnter={(e) => (e.target.style.opacity = 1)}
+            onMouseLeave={(e) => (e.target.style.opacity = 0)}
+          >
+            {isPlaying ? '🔇' : '🎵'}
+          </button>
         </>
       )}
     </div>
