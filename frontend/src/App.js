@@ -65,28 +65,35 @@ const App = () => {
     }
   };
 
-  const createRoom = async () => {
-    try {
-      console.log('Attempting to create room with wager:', wager);
-      const response = await axios.post(`${process.env.REACT_APP_API_URL}/api/rooms`, { wager: parseInt(wager) });
-      console.log('Room created:', response.data);
-      setRoomId(response.data.roomId);
-      setGameState(response.data);
-      fetchRooms();
-    } catch (error) {
-      console.error('Error creating room:', error.message);
+const createRoom = async () => {
+  try {
+    console.log('Attempting to create room with wager:', wager);
+    const response = await axios.post(`${process.env.REACT_APP_API_URL}/api/rooms`, { wager: parseInt(wager) });
+    console.log('Room created:', response.data);
+    setRoomId(response.data.roomId);
+    setGameState(response.data);
+    fetchRooms();
+  } catch (error) {
+    console.error('Error creating room:', error.message);
+    // Rollback wager if API fails (though this requires backend support)
+    if (user) {
+      setUser({ ...user, foxyPesos: user.foxyPesos + parseInt(wager) }); // Temporary client-side rollback
     }
-  };
+  }
+};
 
-  const joinRoom = async (id) => {
-    try {
-      const response = await axios.post(`${process.env.REACT_APP_API_URL}/api/rooms/${id}/join`);
-      setRoomId(id);
-      setGameState(response.data);
-    } catch (error) {
-      console.error('Error joining room:', error.message);
+const joinRoom = async (id) => {
+  try {
+    const response = await axios.post(`${process.env.REACT_APP_API_URL}/api/rooms/${id}/join`);
+    setRoomId(id);
+    setGameState(response.data);
+  } catch (error) {
+    console.error('Error joining room:', error.message);
+    if (user) {
+      setUser({ ...user, foxyPesos: user.foxyPesos + parseInt(wager) }); // Temporary client-side rollback
     }
-  };
+  }
+};
 
   const roll = async () => {
     try {
