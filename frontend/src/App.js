@@ -1,10 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import io from 'socket.io-client';
 import jwtDecode from 'jwt-decode';
 import './App.css';
 
-const socket = io(process.env.REACT_APP_API_URL || 'http://localhost:3001');
+const socket = io(process.env.REACT_APP_API_URL || 'http://localhost:3001', {
+  reconnection: true,
+  reconnectionAttempts: 5,
+  reconnectionDelay: 1000,
+});
 
 const App = () => {
   const [user, setUser] = useState(null);
@@ -15,6 +19,8 @@ const App = () => {
   const [roomId, setRoomId] = useState(null);
   const [gameState, setGameState] = useState(null);
   const [errorMessage, setErrorMessage] = useState('');
+  const [isPlaying, setIsPlaying] = useState(false);
+  const audioRef = useRef(null);
 
   useEffect(() => {
     const checkActiveRoom = async () => {
@@ -28,15 +34,10 @@ const App = () => {
       }
     };
 
-    // Music fade-in
-    const audio = new Audio('https://rfgdeathroll-frontend.onrender.com/Deathroll.mp3'); // Update URL as needed
-    audio.loop = true;
-    audio.volume = 0;
-    audio.play().catch(err => console.error('Audio play failed:', err));
-    let fade = setInterval(() => {
-      if (audio.volume < 1) audio.volume = Math.min(1, audio.volume + 0.01); // 2-second fade (100 * 0.01s)
-      else clearInterval(fade);
-    }, 10);
+    socket.on('connect', () => console.log('Socket connected:', socket.id));
+    socket.on('disconnect', (reason) => console.log('Socket disconnected:', reason));
+    socket.on('reconnect', (attempt) => console.log('Socket reconnected, attempt:', attempt));
+    socket.on('connect_error', (error) => console.log('Socket connect error:', error.message));
 
     socket.on('roomCreated', (room) => {
       console.log('Room created:', room);
@@ -73,11 +74,7 @@ const App = () => {
     });
     fetchRooms();
     checkActiveRoom();
-    return () => {
-      clearInterval(fade);
-      audio.pause();
-      socket.disconnect();
-    };
+    return () => socket.disconnect();
   }, [rooms, roomId, gameState, user]);
 
   const fetchRooms = async () => {
@@ -95,6 +92,7 @@ const App = () => {
       const decoded = jwtDecode(response.data.token);
       setUser({ token: response.data.token, foxyPesos: response.data.foxyPesos, _id: decoded.userId });
       axios.defaults.headers.common['Authorization'] = `Bearer ${response.data.token}`;
+      toggleAudio(); // Start audio on first interaction
     } catch (error) {
       console.error('Error signing up:', error.message);
     }
@@ -106,6 +104,7 @@ const App = () => {
       const decoded = jwtDecode(response.data.token);
       setUser({ token: response.data.token, foxyPesos: response.data.foxyPesos, _id: decoded.userId });
       axios.defaults.headers.common['Authorization'] = `Bearer ${response.data.token}`;
+      toggleAudio(); // Start audio on first interaction
     } catch (error) {
       console.error('Error logging in:', error.message);
     }
@@ -164,6 +163,25 @@ const App = () => {
     }
   };
 
+  const toggleAudio = () => {
+    if (!audioRef.current) {
+      audioRef.current = new Audio('https://rfgdeathroll-frontend.onrender.com/Deathroll.mp3'); // Update URL
+      audioRef.current.loop = true;
+      audioRef.current.volume = 0;
+    }
+    if (isPlaying) {
+      audioRef.current.pause();
+    } else {
+      audioRef.current.play().then(() => {
+        let fade = setInterval(() => {
+          if (audioRef.current.volume < 1) audioRef.current.volume = Math.min(1, audioRef.current.volume + 0.01);
+          else clearInterval(fade);
+        }, 10);
+      }).catch(err => console.error('Audio play failed:', err));
+    }
+    setIsPlaying(!isPlaying);
+  };
+
   return (
     <div className="container">
       <h1>Death Roll</h1>
@@ -187,6 +205,7 @@ const App = () => {
             <button onClick={signup} className="button">Signup</button>
             <button onClick={login} className="button">Login</button>
           </div>
+          <button onClick={toggleAudio} className="button">Toggle Music</button>
         </div>
       ) : (
         <>
@@ -260,6 +279,7 @@ const App = () => {
           >
             Clear Rooms
           </button>
+          {!user && <button onClick={toggleAudio} className="button">Toggle Music</button>}
         </>
       )}
     </div>
