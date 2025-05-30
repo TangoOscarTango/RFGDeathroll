@@ -28,6 +28,16 @@ const App = () => {
       }
     };
 
+    // Music fade-in
+    const audio = new Audio('https://rfgdeathroll-frontend.onrender.com/Deathroll.mp3'); // Update URL as needed
+    audio.loop = true;
+    audio.volume = 0;
+    audio.play().catch(err => console.error('Audio play failed:', err));
+    let fade = setInterval(() => {
+      if (audio.volume < 1) audio.volume = Math.min(1, audio.volume + 0.01); // 2-second fade (100 * 0.01s)
+      else clearInterval(fade);
+    }, 10);
+
     socket.on('roomCreated', (room) => {
       console.log('Room created:', room);
       setRooms([...rooms, room]);
@@ -43,13 +53,17 @@ const App = () => {
     socket.on('rollResult', (data) => {
       if (data.roomId === roomId) {
         console.log('Roll result received:', data);
-        setGameState({ ...gameState, rolls: [...(gameState.rolls || []), data], currentMax: data.value, currentPlayer: data.player === gameState.player1._id ? gameState.player2._id : gameState.player1._id });
+        setGameState(prev => ({ ...prev, rolls: [...(prev.rolls || []), data], currentMax: data.value, currentPlayer: data.player === prev.player1._id ? prev.player2._id : prev.player1._id }));
       }
     });
     socket.on('gameEnded', (data) => {
       if (data.roomId === roomId) {
         console.log('Game ended received:', data);
-        setGameState(prev => ({ ...prev, status: 'closed', winner: data.winner }));
+        setGameState(prev => {
+          console.log('Setting game state to closed with winner:', data.winner);
+          return { ...prev, status: 'closed', winner: data.winner };
+        });
+        console.log('Setting roomId to null');
         setRoomId(null); // Return to home screen
       }
     });
@@ -59,7 +73,11 @@ const App = () => {
     });
     fetchRooms();
     checkActiveRoom();
-    return () => socket.disconnect();
+    return () => {
+      clearInterval(fade);
+      audio.pause();
+      socket.disconnect();
+    };
   }, [rooms, roomId, gameState, user]);
 
   const fetchRooms = async () => {
