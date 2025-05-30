@@ -51,10 +51,17 @@ const App = () => {
   };
 
   const createRoom = async () => {
+  try {
+    console.log('Attempting to create room with wager:', wager);
     const response = await axios.post('/api/rooms', { wager: parseInt(wager) });
+    console.log('Room created:', response.data);
     setRoomId(response.data.roomId);
     setGameState(response.data);
-  };
+    fetchRooms();
+  } catch (error) {
+    console.error('Error creating room:', error.message);
+  }
+};
 
   const joinRoom = async (id) => {
     const response = await axios.post(`/api/rooms/${id}/join`);
