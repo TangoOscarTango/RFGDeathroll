@@ -76,15 +76,16 @@ app.post('/api/login', async (req, res) => {
 
 app.post('/api/rooms', auth, async (req, res) => {
   const { wager } = req.body;
-  if (wager < 20) return res.status(400).json({ error: 'Minimum wager is 20 Foxy Pesos' });
-  if (req.user.foxyPesos < wager) return res.status(400).json({ error: 'Insufficient Foxy Pesos' });
-  req.user.foxyPesos -= wager;
+  const wagerValue = parseInt(wager);
+  if (isNaN(wagerValue) || wagerValue < 20) return res.status(400).json({ error: 'Minimum wager is 20 Foxy Pesos' });
+  if (req.user.foxyPesos < wagerValue) return res.status(400).json({ error: 'Insufficient Foxy Pesos' });
+  req.user.foxyPesos -= wagerValue;
   await req.user.save();
-  console.log('Creating room with wager:', wager);
+  console.log('Creating room with wager:', wagerValue);
   const room = new Room({
     roomId: Date.now(),
     player1: req.user._id,
-    wager,
+    wager: wagerValue,
     status: 'open',
   });
   await room.save();
@@ -135,7 +136,7 @@ app.post('/api/rooms/:id/roll', auth, async (req, res) => {
 });
 
 app.get('/api/rooms', async (req, res) => {
-  const rooms = await Room.find({ status: { $in: ['open', 'active'] } });
+  const rooms = await Room.find({ status: { $in: ['open', 'active'] } }).populate('player1 player2 currentPlayer');
   res.json(rooms);
 });
 
