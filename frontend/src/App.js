@@ -48,9 +48,9 @@ const App = () => {
     });
     socket.on('gameEnded', (data) => {
       if (data.roomId === roomId) {
-        console.log('Game ended:', data);
+        console.log('Game ended received:', data);
         setGameState({ ...gameState, status: 'closed', winner: data.winner });
-        setRoomId(null);
+        setRoomId(null); // Return to home screen
       }
     });
     fetchRooms();
@@ -200,8 +200,11 @@ const App = () => {
                   {gameState.status === 'active' && gameState.currentPlayer && user._id && gameState.currentPlayer._id === user._id && (
                     <button onClick={roll} className="button">Roll</button>
                   )}
-                  {gameState.status === 'closed' && (
-                    <p>Winner: {gameState.winner && user._id ? (gameState.winner === user._id ? 'You' : 'Opponent') : 'N/A'}</p>
+                  {gameState.status === 'closed' && gameState.winner && (
+                    <div>
+                      <p>Game Over! Winner: {gameState.winner === user._id ? 'You' : 'Opponent'}</p>
+                      <button onClick={() => setRoomId(null)} className="button">Back to Home</button>
+                    </div>
                   )}
                 </>
               )}
