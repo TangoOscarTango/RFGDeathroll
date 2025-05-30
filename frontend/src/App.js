@@ -21,13 +21,20 @@ const App = () => {
     });
     socket.on('playerJoined', (room) => {
       setRooms(rooms.map(r => r.roomId === room.roomId ? room : r));
-      if (room.roomId === roomId) setGameState(room);
+      if (room.roomId === roomId) {
+        console.log('Player joined, updating game state:', room);
+        setGameState(room);
+      }
     });
     socket.on('rollResult', (data) => {
-      if (data.roomId === roomId) setGameState({ ...gameState, rolls: [...(gameState.rolls || []), data] });
+      if (data.roomId === roomId) {
+        console.log('Roll result received:', data);
+        setGameState({ ...gameState, rolls: [...(gameState.rolls || []), data] });
+      }
     });
     socket.on('gameEnded', (data) => {
       if (data.roomId === roomId) {
+        console.log('Game ended:', data);
         setGameState({ ...gameState, status: 'closed', winner: data.winner });
         setRoomId(null);
       }
@@ -65,40 +72,44 @@ const App = () => {
     }
   };
 
-const createRoom = async () => {
-  try {
-    console.log('Attempting to create room with wager:', wager);
-    const response = await axios.post(`${process.env.REACT_APP_API_URL}/api/rooms`, { wager: parseInt(wager) });
-    console.log('Room created:', response.data);
-    setRoomId(response.data.roomId);
-    setGameState(response.data);
-    fetchRooms();
-  } catch (error) {
-    console.error('Error creating room:', error.message);
-    // Rollback wager if API fails (though this requires backend support)
-    if (user) {
-      setUser({ ...user, foxyPesos: user.foxyPesos + parseInt(wager) }); // Temporary client-side rollback
+  const createRoom = async () => {
+    const originalFoxyPesos = user ? user.foxyPesos : 0;
+    try {
+      console.log('Attempting to create room with wager:', wager);
+      const response = await axios.post(`${process.env.REACT_APP_API_URL}/api/rooms`, { wager: parseInt(wager) });
+      console.log('Room created:', response.data);
+      setRoomId(response.data.roomId);
+      setGameState(response.data);
+      fetchRooms();
+    } catch (error) {
+      console.error('Error creating room:', error.message);
+      if (user) setUser({ ...user, foxyPesos: originalFoxyPesos });
     }
-  }
-};
+  };
 
-const joinRoom = async (id) => {
-  try {
-    const response = await axios.post(`${process.env.REACT_APP_API_URL}/api/rooms/${id}/join`);
-    setRoomId(id);
-    setGameState(response.data);
-  } catch (error) {
-    console.error('Error joining room:', error.message);
-    if (user) {
-      setUser({ ...user, foxyPesos: user.foxyPesos + parseInt(wager) }); // Temporary client-side rollback
+  const joinRoom = async (id) => {
+    const originalFoxyPesos = user ? user.foxyPesos : 0;
+    try {
+      const response = await axios.post(`${process.env.REACT_APP_API_URL}/api/rooms/${id}/join`);
+      console.log('Joined room:', response.data);
+      setRoomId(id);
+      setGameState(response.data);
+    } catch (error) {
+      console.error('Error joining room:', error.message);
+      if (user) setUser({ ...user, foxyPesos: originalFoxyPesos });
     }
-  }
-};
+  };
 
   const roll = async () => {
     try {
       const response = await axios.post(`${process.env.REACT_APP_API_URL}/api/rooms/${roomId}/roll`);
+      console.log('Roll response:', response.data);
       setGameState({ ...gameState, rolls: [...gameState.rolls, { player: user._id, value: response.data.rollValue }] });
+    } roll = async () => {
+    try {
+      const response = await axios.post(`${process.env.REACT_APP_API_URL}/api/rooms/${roomId}/roll`);
+      console.log('Roll response:', response.data);
+      setGameState({ ...gameState, rolls: [...(gameState.rolls || []), { player: user._id, value: response.data.rollValue }] });
     } catch (error) {
       console.error('Error rolling:', error.message);
     }
