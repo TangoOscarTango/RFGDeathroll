@@ -105,7 +105,7 @@ const App = () => {
                   className="input"
                 />
                 <button onClick={() => { console.log('Create button clicked'); createRoom(); }} className="button">Create Room</button>
-                //OLD <button onClick={createRoom} className="button">Create Room</button>
+                {/*OLD <button onClick={createRoom} className="button">Create Room</button>*/}
               </div>
               <h2>Open Rooms</h2>
               <ul>
