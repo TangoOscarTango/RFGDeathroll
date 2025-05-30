@@ -113,8 +113,20 @@ app.post('/api/rooms/:id/join', auth, async (req, res) => {
 
 app.post('/api/rooms/:id/roll', auth, async (req, res) => {
   const room = await Room.findOne({ roomId: parseInt(req.params.id) }).populate('player1 player2 currentPlayer');
-  if (!room || room.status !== 'active') return res.status(400).json({ error: 'Room not active' });
-  if (room.currentPlayer.toString() !== req.user._id.toString()) return res.status(400).json({ error: 'Not your turn' });
+  console.log('Roll request for room:', req.params.id, 'by user:', req.user._id);
+  if (!room) {
+    console.log('Room not found:', req.params.id);
+    return res.status(400).json({ error: 'Room not found' });
+  }
+  if (room.status !== 'active') {
+    console.log('Room not active:', room.status);
+    return res.status(400).json({ error: 'Room not active' });
+  }
+  console.log('Comparing currentPlayer:', room.currentPlayer._id, 'with user:', req.user._id);
+  if (room.currentPlayer._id.toString() !== req.user._id.toString()) {
+    console.log('Not your turn - currentPlayer:', room.currentPlayer._id, 'user:', req.user._id);
+    return res.status(400).json({ error: 'Not your turn' });
+  }
   const rollValue = crypto.randomInt(1, room.currentMax + 1);
   room.rolls.push({ player: req.user._id, value: rollValue });
   io.emit('rollResult', { roomId: room.roomId, player: req.user._id, value: rollValue });
