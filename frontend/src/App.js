@@ -55,7 +55,7 @@ const App = () => {
   const signup = async () => {
     try {
       const response = await axios.post(`${process.env.REACT_APP_API_URL}/api/signup`, { email, password });
-      setUser({ token: response.data.token, foxyPesos: response.data.foxyPesos });
+      setUser({ token: response.data.token, foxyPesos: response.data.foxyPesos, _id: jwt.decode(response.data.token).userId });
       axios.defaults.headers.common['Authorization'] = `Bearer ${response.data.token}`;
     } catch (error) {
       console.error('Error signing up:', error.message);
@@ -65,7 +65,7 @@ const App = () => {
   const login = async () => {
     try {
       const response = await axios.post(`${process.env.REACT_APP_API_URL}/api/login`, { email, password });
-      setUser({ token: response.data.token, foxyPesos: response.data.foxyPesos });
+      setUser({ token: response.data.token, foxyPesos: response.data.foxyPesos, _id: jwt.decode(response.data.token).userId });
       axios.defaults.headers.common['Authorization'] = `Bearer ${response.data.token}`;
     } catch (error) {
       console.error('Error logging in:', error.message);
@@ -76,7 +76,7 @@ const App = () => {
     const originalFoxyPesos = user ? user.foxyPesos : 0;
     try {
       console.log('Attempting to create room with wager:', wager);
-      const response = await axios.post(`${process.env.REACT_APP_API_URL}/api/rooms`, { wager: parseInt(wager) });
+      const response = await axios.post(`${process.env.REACT_APP_API_URL}/api/rooms`, { wager: Math.max(20, parseInt(wager) || 0) });
       console.log('Room created:', response.data);
       setRoomId(response.data.roomId);
       setGameState(response.data);
@@ -144,8 +144,9 @@ const App = () => {
                   type="number"
                   value={wager}
                   onChange={(e) => setWager(e.target.value)}
-                  placeholder="Wager (Foxy Pesos)"
+                  placeholder="Wager (min 20 FP)"
                   className="input"
+                  min="20"
                 />
                 <button onClick={() => { console.log('Create button clicked'); createRoom(); }} className="button">Create Room</button>
               </div>
@@ -167,16 +168,16 @@ const App = () => {
               {gameState && (
                 <>
                   <p>Status: {gameState.status}</p>
-                  <p>Current Max: {gameState.currentMax}</p>
-                  <p>Current Player: {gameState.currentPlayer === user._id ? 'You' : 'Opponent'}</p>
+                  <p>Current Max: {gameState.currentMax || 'N/A'}</p>
+                  <p>Current Player: {gameState.currentPlayer && user._id ? (gameState.currentPlayer.toString() === user._id.toString() ? 'You' : 'Opponent') : 'N/A'}</p>
                   {gameState.rolls && gameState.rolls.map((roll, i) => (
-                    <p key={i}>{roll.player === user._id ? 'You' : 'Opponent'} rolled: {roll.value}</p>
+                    <p key={i}>{roll.player && user._id ? (roll.player.toString() === user._id.toString() ? 'You' : 'Opponent') : 'Unknown'} rolled: {roll.value}</p>
                   ))}
-                  {gameState.status === 'active' && gameState.currentPlayer === user._id && (
+                  {gameState.status === 'active' && gameState.currentPlayer && user._id && gameState.currentPlayer.toString() === user._id.toString() && (
                     <button onClick={roll} className="button">Roll</button>
                   )}
                   {gameState.status === 'closed' && (
-                    <p>Winner: {gameState.winner === user._id ? 'You' : 'Opponent'}</p>
+                    <p>Winner: {gameState.winner && user._id ? (gameState.winner.toString() === user._id.toString() ? 'You' : 'Opponent') : 'N/A'}</p>
                   )}
                 </>
               )}
