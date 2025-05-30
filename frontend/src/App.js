@@ -15,7 +15,10 @@ const App = () => {
   const [gameState, setGameState] = useState(null);
 
   useEffect(() => {
-    socket.on('roomCreated', (room) => setRooms([...rooms, room]));
+    socket.on('roomCreated', (room) => {
+      console.log('Room created:', room);
+      setRooms([...rooms, room]);
+    });
     socket.on('playerJoined', (room) => {
       setRooms(rooms.map(r => r.roomId === room.roomId ? room : r));
       if (room.roomId === roomId) setGameState(room);
@@ -33,34 +36,66 @@ const App = () => {
     return () => socket.disconnect();
   }, [rooms, roomId, gameState]);
 
-const fetchRooms = async () => {
-  const response = await axios.get(`${process.env.REACT_APP_API_URL}/api/rooms`);
-  setRooms(response.data);
-};
+  const fetchRooms = async () => {
+    try {
+      const response = await axios.get(`${process.env.REACT_APP_API_URL}/api/rooms`);
+      setRooms(response.data);
+    } catch (error) {
+      console.error('Error fetching rooms:', error.message);
+    }
+  };
 
-const createRoom = async () => {
-  try {
-    console.log('Attempting to create room with wager:', wager);
-    const response = await axios.post(`${process.env.REACT_APP_API_URL}/api/rooms`, { wager: parseInt(wager) });
-    console.log('Room created:', response.data);
-    setRoomId(response.data.roomId);
-    setGameState(response.data);
-    fetchRooms();
-  } catch (error) {
-    console.error('Error creating room:', error.message);
-  }
-};
+  const signup = async () => {
+    try {
+      const response = await axios.post(`${process.env.REACT_APP_API_URL}/api/signup`, { email, password });
+      setUser({ token: response.data.token, foxyPesos: response.data.foxyPesos });
+      axios.defaults.headers.common['Authorization'] = `Bearer ${response.data.token}`;
+    } catch (error) {
+      console.error('Error signing up:', error.message);
+    }
+  };
 
-const joinRoom = async (id) => {
-  const response = await axios.post(`${process.env.REACT_APP_API_URL}/api/rooms/${id}/join`);
-  setRoomId(id);
-  setGameState(response.data);
-};
+  const login = async () => {
+    try {
+      const response = await axios.post(`${process.env.REACT_APP_API_URL}/api/login`, { email, password });
+      setUser({ token: response.data.token, foxyPesos: response.data.foxyPesos });
+      axios.defaults.headers.common['Authorization'] = `Bearer ${response.data.token}`;
+    } catch (error) {
+      console.error('Error logging in:', error.message);
+    }
+  };
 
-const roll = async () => {
-  const response = await axios.post(`${process.env.REACT_APP_API_URL}/api/rooms/${roomId}/roll`);
-  setGameState({ ...gameState, rolls: [...gameState.rolls, { player: user._id, value: response.data.rollValue }] });
-};
+  const createRoom = async () => {
+    try {
+      console.log('Attempting to create room with wager:', wager);
+      const response = await axios.post(`${process.env.REACT_APP_API_URL}/api/rooms`, { wager: parseInt(wager) });
+      console.log('Room created:', response.data);
+      setRoomId(response.data.roomId);
+      setGameState(response.data);
+      fetchRooms();
+    } catch (error) {
+      console.error('Error creating room:', error.message);
+    }
+  };
+
+  const joinRoom = async (id) => {
+    try {
+      const response = await axios.post(`${process.env.REACT_APP_API_URL}/api/rooms/${id}/join`);
+      setRoomId(id);
+      setGameState(response.data);
+    } catch (error) {
+      console.error('Error joining room:', error.message);
+    }
+  };
+
+  const roll = async () => {
+    try {
+      const response = await axios.post(`${process.env.REACT_APP_API_URL}/api/rooms/${roomId}/roll`);
+      setGameState({ ...gameState, rolls: [...gameState.rolls, { player: user._id, value: response.data.rollValue }] });
+    } catch (error) {
+      console.error('Error rolling:', error.message);
+    }
+  };
 
   return (
     <div className="container">
@@ -100,7 +135,6 @@ const roll = async () => {
                   className="input"
                 />
                 <button onClick={() => { console.log('Create button clicked'); createRoom(); }} className="button">Create Room</button>
-                {/*OLD <button onClick={createRoom} className="button">Create Room</button>*/}
               </div>
               <h2>Open Rooms</h2>
               <ul>
