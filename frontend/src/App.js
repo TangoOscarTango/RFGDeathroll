@@ -96,7 +96,7 @@ const App = () => {
       const decoded = jwtDecode(response.data.token);
       setUser({ token: response.data.token, foxyPesos: response.data.foxyPesos, _id: decoded.userId });
       axios.defaults.headers.common['Authorization'] = `Bearer ${response.data.token}`;
-      if (!isPlaying) toggleAudio(); // Start music only if off
+      if (!isPlaying) toggleAudio();
     } catch (error) {
       console.error('Error signing up:', error.message);
     }
@@ -108,7 +108,7 @@ const App = () => {
       const decoded = jwtDecode(response.data.token);
       setUser({ token: response.data.token, foxyPesos: response.data.foxyPesos, _id: decoded.userId });
       axios.defaults.headers.common['Authorization'] = `Bearer ${response.data.token}`;
-      if (!isPlaying) toggleAudio(); // Start music only if off
+      if (!isPlaying) toggleAudio();
     } catch (error) {
       console.error('Error logging in:', error.message);
     }
@@ -169,7 +169,7 @@ const App = () => {
 
   const toggleAudio = () => {
     if (!audioRef.current) {
-      audioRef.current = new Audio('https://rfgdeathroll-frontend.onrender.com/Deathroll.mp3'); // Update URL
+      audioRef.current = new Audio('https://rfgdeathroll-frontend.onrender.com/Deathroll.mp3');
       audioRef.current.loop = true;
       audioRef.current.volume = 0;
     }
