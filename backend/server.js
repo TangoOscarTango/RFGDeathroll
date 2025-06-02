@@ -102,7 +102,7 @@ app.post('/api/rooms/:id/join', auth, async (req, res) => {
   await req.user.save();
   room.player2 = req.user._id;
   room.status = 'active';
-  room.currentMax = 5000;
+  room.currentMax = 25; // Temporary setting for faster testing
   room.currentPlayer = room.player1;
   room.rolls = [];
   await room.save();
@@ -133,8 +133,10 @@ app.post('/api/rooms/:id/roll', auth, async (req, res) => {
     return res.status(500).json({ error: 'Internal roll generation error' });
   }
   room.rolls.push({ player: req.user._id, value: rollValue });
+  console.log('Generated roll value:', rollValue);
   console.log('Emitting rollResult:', { roomId: room.roomId, player: req.user._id, value: rollValue });
   io.emit('rollResult', { roomId: room.roomId, player: req.user._id, value: rollValue });
+  console.log('Socket clients:', io.engine.clientsCount);
 
   if (rollValue === 1) {
     const winnerId = room.currentPlayer.equals(room.player1) ? room.player2 : room.player1;
