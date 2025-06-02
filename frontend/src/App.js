@@ -72,8 +72,7 @@ const App = () => {
           console.log('Setting game state to closed with winner:', data.winner);
           return { ...prev, status: 'closed', winner: data.winner };
         });
-        console.log('Setting roomId to null');
-        setRoomId(null); // Return to home screen
+        // Don't immediately set roomId to null - let the user see the result first
       } else {
         console.log('Game ended ignored, roomId mismatch:', data.roomId, 'vs', roomId);
       }
@@ -263,7 +262,17 @@ const App = () => {
                   {gameState.status === 'closed' && gameState.winner && (
                     <div>
                       <p>Game Over! Winner: {gameState.winner === user._id ? 'You' : 'Opponent'}</p>
-                      <button onClick={() => setRoomId(null)} className="button">Back to Home</button>
+                      <button onClick={async () => {
+                        setRoomId(null);
+                        setGameState(null);
+                        // Refresh user's foxy pesos
+                        try {
+                          const response = await axios.get(`${process.env.REACT_APP_API_URL}/api/user-info`);
+                          setUser(prev => ({ ...prev, foxyPesos: response.data.foxyPesos }));
+                        } catch (err) {
+                          console.log('Could not refresh user info');
+                        }
+                      }} className="button">Back to Home</button>
                     </div>
                   )}
                 </>
