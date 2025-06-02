@@ -144,9 +144,10 @@ app.post('/api/rooms/:id/roll', auth, async (req, res) => {
     winner.foxyPesos += room.wager * 2;
     await winner.save();
     room.status = 'closed';
-    console.log('Emitting gameEnded:', { roomId: room.roomId, winner: winnerId });
-    io.emit('gameEnded', { roomId: room.roomId, winner: winnerId });
-    console.log('Game ended:', { roomId: room.roomId, winner: winnerId });
+    room.winner = winnerId;
+    console.log('Emitting gameEnded:', { roomId: room.roomId, winner: winnerId.toString() });
+    io.emit('gameEnded', { roomId: room.roomId, winner: winnerId.toString() });
+    console.log('Game ended:', { roomId: room.roomId, winner: winnerId.toString() });
   } else {
     room.currentMax = rollValue;
     room.currentPlayer = room.currentPlayer.equals(room.player1) ? room.player2 : room.player1;
@@ -166,6 +167,10 @@ app.post('/api/clear-rooms', auth, async (req, res) => {
 app.get('/api/rooms', async (req, res) => {
   const rooms = await Room.find({ status: { $in: ['open', 'active'] } }).populate('player1 player2 currentPlayer');
   res.json(rooms);
+});
+
+app.get('/api/user-info', auth, async (req, res) => {
+  res.json({ foxyPesos: req.user.foxyPesos });
 });
 
 io.on('connection', (socket) => {
