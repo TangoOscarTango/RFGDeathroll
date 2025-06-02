@@ -52,24 +52,30 @@ const App = () => {
       }
     });
     socket.on('rollResult', (data) => {
+      console.log('Socket event rollResult received for roomId:', data.roomId, 'current roomId:', roomId);
       if (data.roomId === roomId) {
-        console.log('Roll result received:', data);
+        console.log('Roll result received and matched:', data);
         setGameState(prev => {
           const newRolls = [...(prev.rolls || []), data];
           console.log('New rolls array:', newRolls);
           return { ...prev, rolls: newRolls, currentMax: data.value, currentPlayer: data.player === prev.player1._id ? prev.player2._id : prev.player1._id };
         });
+      } else {
+        console.log('Roll result ignored, roomId mismatch:', data.roomId, 'vs', roomId);
       }
     });
     socket.on('gameEnded', (data) => {
+      console.log('Socket event gameEnded received for roomId:', data.roomId, 'current roomId:', roomId);
       if (data.roomId === roomId) {
-        console.log('Game ended received:', data);
+        console.log('Game ended received and matched:', data);
         setGameState(prev => {
           console.log('Setting game state to closed with winner:', data.winner);
           return { ...prev, status: 'closed', winner: data.winner };
         });
         console.log('Setting roomId to null');
         setRoomId(null); // Return to home screen
+      } else {
+        console.log('Game ended ignored, roomId mismatch:', data.roomId, 'vs', roomId);
       }
     });
     socket.on('roomsCleared', () => {
