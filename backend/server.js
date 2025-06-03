@@ -11,11 +11,17 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: '*',
+    origin: 'https://rfgdeathroll-frontend.onrender.com', // Explicitly allow frontend origin
+    methods: ['GET', 'POST'],
   },
 });
 
-app.use(cors());
+app.use(cors({
+  origin: 'https://rfgdeathroll-frontend.onrender.com', // Ensure CORS middleware matches
+  methods: ['GET', 'POST'],
+  credentials: true, // Allow credentials if needed
+}));
+
 app.use(express.json());
 
 mongoose.connect(process.env.MONGO_URI, {
@@ -68,7 +74,6 @@ app.post('/api/signup', async (req, res) => {
   console.log('Received signup request:', req.body);
   const { email, password, username } = req.body;
   try {
-    // Strict username uniqueness check
     console.log('Checking for existing username:', username);
     const existingUser = await User.findOne({ username });
     if (existingUser) {
