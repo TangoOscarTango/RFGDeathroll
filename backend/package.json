@@ -14,6 +14,7 @@
     "jsonwebtoken": "^9.0.2",
     "cors": "^2.8.5",
     "socket.io": "^4.7.5",
-    "http": "^0.0.1-security"
+    "http": "^0.0.1-security",
+    "dotenv": "^16.4.5"
   }
 }
