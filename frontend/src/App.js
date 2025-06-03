@@ -6,8 +6,9 @@ import './App.css';
 
 const socket = io(process.env.REACT_APP_API_URL || 'http://localhost:3001', {
   reconnection: true,
-  reconnectionAttempts: 10,
+  reconnectionAttempts: 5, // Limit total reconnect attempts
   reconnectionDelay: 1000,
+  reconnectionDelayMax: 5000, // Max delay between reconnects
   autoConnect: false,
 });
 
@@ -66,10 +67,23 @@ const App = () => {
     });
     socket.on('disconnect', (reason) => {
       console.log('Socket disconnected:', reason);
-      setTimeout(() => {
-        console.log('Attempting immediate reconnect');
-        socket.connect();
-      }, 1000);
+      // Controlled reconnect with backoff
+      let attempt = 0;
+      const maxAttempts = 3;
+      const reconnect = () => {
+        if (attempt < maxAttempts && !socket.connected) {
+          attempt++;
+          const delay = Math.min(1000 * Math.pow(2, attempt), 5000); // Exponential backoff
+          console.log(`Attempting reconnect ${attempt}/${maxAttempts} after ${delay}ms`);
+          setTimeout(() => {
+            socket.connect();
+            if (!socket.connected) reconnect();
+          }, delay);
+        } else {
+          console.log('Max reconnect attempts reached');
+        }
+      };
+      reconnect();
     });
     socket.on('reconnect', (attempt) => {
       console.log('Socket reconnected, attempt:', attempt);
@@ -240,7 +254,7 @@ const App = () => {
     }
   };
 
-  const fetchRoomStateWithRetry = async (roomId, retries = 3, delay = 500) => {
+  const fetchRoomStateWithRetry = async (roomId, retries = 5, delay = 1000) => {
     for (let i = 0; i < retries; i++) {
       try {
         const response = await axios.get(`${process.env.REACT_APP_API_URL}/api/rooms`);
