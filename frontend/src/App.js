@@ -4,14 +4,6 @@ import io from 'socket.io-client';
 import jwtDecode from 'jwt-decode';
 import './App.css';
 
-const socket = io(process.env.REACT_APP_API_URL || 'http://localhost:3001', {
-  reconnection: true,
-  reconnectionAttempts: 5, // Limit total reconnect attempts
-  reconnectionDelay: 1000,
-  reconnectionDelayMax: 5000, // Max delay between reconnects
-  autoConnect: false,
-});
-
 const App = () => {
   const [user, setUser] = useState(null);
   const [email, setEmail] = useState('');
@@ -39,108 +31,18 @@ const App = () => {
       }
     };
 
-    setTimeout(() => {
-      console.log('Attempting initial Socket.IO connection');
-      socket.connect();
-    }, 2000);
-
     const keepAlive = setInterval(async () => {
       try {
         await axios.get(`${process.env.REACT_APP_API_URL}/api/rooms`);
         console.log('Keep-alive ping sent');
-        if (!socket.connected) {
-          console.log('Attempting to reconnect Socket.IO');
-          socket.connect();
-        }
       } catch (error) {
         console.error('Keep-alive ping failed:', error.message);
-        if (!socket.connected) {
-          console.log('Attempting to reconnect Socket.IO');
-          socket.connect();
-        }
       }
     }, 30000);
 
-    socket.on('connect', () => {
-      console.log('Socket connected:', socket.id);
-      socket.emit('join', user ? user._id : null);
-    });
-    socket.on('disconnect', (reason) => {
-      console.log('Socket disconnected:', reason);
-      // Controlled reconnect with backoff
-      let attempt = 0;
-      const maxAttempts = 3;
-      const reconnect = () => {
-        if (attempt < maxAttempts && !socket.connected) {
-          attempt++;
-          const delay = Math.min(1000 * Math.pow(2, attempt), 5000); // Exponential backoff
-          console.log(`Attempting reconnect ${attempt}/${maxAttempts} after ${delay}ms`);
-          setTimeout(() => {
-            socket.connect();
-            if (!socket.connected) reconnect();
-          }, delay);
-        } else {
-          console.log('Max reconnect attempts reached');
-        }
-      };
-      reconnect();
-    });
-    socket.on('reconnect', (attempt) => {
-      console.log('Socket reconnected, attempt:', attempt);
-    });
-    socket.on('connect_error', (error) => {
-      console.log('Socket connect error:', error.message);
-    });
-
-    socket.on('roomCreated', (room) => {
-      console.log('Room created:', room);
-      setRooms([...rooms, room]);
-    });
-    socket.on('playerJoined', (room) => {
-      console.log('Player joined:', room);
-      setRooms(rooms.map(r => r.roomId === room.roomId ? room : r));
-      if (room.roomId === roomId) {
-        console.log('Updating game state:', room);
-        setGameState(room);
-      }
-    });
-    socket.on('rollResult', (data) => {
-      console.log('Socket event rollResult received for roomId:', data.roomId, 'current roomId:', roomId);
-      if (data.roomId === roomId) {
-        console.log('Roll result received and matched:', data);
-        setGameState(prev => {
-          const newRolls = [...(prev.rolls || []), data];
-          console.log('New rolls array:', newRolls);
-          return { ...prev, rolls: newRolls, currentMax: data.value, currentPlayer: data.player === prev.player1._id ? prev.player2._id : prev.player1._id };
-        });
-      } else {
-        console.log('Roll result ignored, roomId mismatch:', data.roomId, 'vs', roomId);
-      }
-    });
-    socket.on('gameEnded', (data) => {
-      console.log('Socket event gameEnded received for roomId:', data.roomId, 'current roomId:', roomId);
-      if (data.roomId === roomId) {
-        console.log('Game ended received and matched:', data);
-        setGameState(prev => {
-          console.log('Setting game state to closed with winner:', data.winner);
-          return { ...prev, status: 'closed', winner: data.winner };
-        });
-        console.log('Setting roomId to null');
-        setRoomId(null);
-      } else {
-        console.log('Game ended ignored, roomId mismatch:', data.roomId, 'vs', roomId);
-      }
-    });
-    socket.on('roomsCleared', () => {
-      setRooms([]);
-      if (!roomId) fetchRooms();
-    });
     fetchRooms();
     checkActiveRoom();
-    return () => {
-      clearInterval(keepAlive);
-      socket.disconnect();
-    };
+    return () => clearInterval(keepAlive);
   }, [rooms, roomId, gameState, user]);
 
   const fetchRooms = async () => {
@@ -244,6 +146,20 @@ const App = () => {
   const joinRoom = async (id) => {
     const originalFoxyPesos = user ? user.foxyPesos : 0;
     try {
+      const socket = io(process.env.REACT_APP_API_URL || 'http://localhost:3001');
+      socket.on('connect', () => {
+        console.log('Socket connected for join:', socket.id);
+        socket.emit('join', user._id);
+      });
+      socket.on('playerJoined', (room) => {
+        console.log('Player joined:', room);
+        setRooms(rooms.map(r => r.roomId === room.roomId ? room : r));
+        if (room.roomId === id) {
+          console.log('Updating game state:', room);
+          setGameState(room);
+        }
+        socket.disconnect();
+      });
       const response = await axios.post(`${process.env.REACT_APP_API_URL}/api/rooms/${id}/join`);
       console.log('Joined room:', response.data);
       setRoomId(id);
@@ -273,10 +189,43 @@ const App = () => {
 
   const roll = async () => {
     try {
+      const socket = io(process.env.REACT_APP_API_URL || 'http://localhost:3001');
+      socket.on('connect', () => {
+        console.log('Socket connected for roll:', socket.id);
+        socket.emit('join', user._id);
+      });
+      socket.on('rollResult', (data) => {
+        console.log('Socket event rollResult received for roomId:', data.roomId, 'current roomId:', roomId);
+        if (data.roomId === roomId) {
+          console.log('Roll result received and matched:', data);
+          setGameState(prev => {
+            const newRolls = [...(prev.rolls || []), data];
+            console.log('New rolls array:', newRolls);
+            return { ...prev, rolls: newRolls, currentMax: data.value, currentPlayer: data.player === prev.player1._id ? prev.player2._id : prev.player1._id };
+          });
+        } else {
+          console.log('Roll result ignored, roomId mismatch:', data.roomId, 'vs', roomId);
+        }
+      });
+      socket.on('gameEnded', (data) => {
+        console.log('Socket event gameEnded received for roomId:', data.roomId, 'current roomId:', roomId);
+        if (data.roomId === roomId) {
+          console.log('Game ended received and matched:', data);
+          setGameState(prev => {
+            console.log('Setting game state to closed with winner:', data.winner);
+            return { ...prev, status: 'closed', winner: data.winner };
+          });
+          console.log('Setting roomId to null');
+          setRoomId(null);
+        } else {
+          console.log('Game ended ignored, roomId mismatch:', data.roomId, 'vs', roomId);
+        }
+        socket.disconnect();
+      });
       const response = await axios.post(`${process.env.REACT_APP_API_URL}/api/rooms/${roomId}/roll`);
       console.log('Roll response:', response.data);
-      if (!socket.connected || response.data.rollValue === 1) {
-        console.log('Socket not connected or rolled a 1, manually fetching game state');
+      if (response.data.rollValue === 1) {
+        console.log('Rolled a 1, manually fetching game state');
         const currentRoom = await fetchRoomStateWithRetry(roomId);
         if (currentRoom) {
           console.log('Updated room state fetched:', currentRoom);
@@ -288,6 +237,7 @@ const App = () => {
         } else {
           console.error('Failed to fetch updated room state after retries');
         }
+        socket.disconnect();
       }
     } catch (error) {
       console.error('Error rolling:', error.message);
