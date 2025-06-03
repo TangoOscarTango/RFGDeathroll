@@ -65,22 +65,34 @@ app.post('/api/check-email', async (req, res) => {
 });
 
 app.post('/api/signup', async (req, res) => {
+  console.log('Received signup request:', req.body);
   const { email, password, username } = req.body;
   try {
+    // Strict username uniqueness check
+    console.log('Checking for existing username:', username);
     const existingUser = await User.findOne({ username });
     if (existingUser) {
+      console.log('Username check failed: Username already exists');
       return res.status(400).json({ error: 'Username already taken' });
     }
+    console.log('Username check passed, proceeding to hash password');
     const hashedPassword = await bcrypt.hash(password, 10);
+    console.log('Password hashed, creating new user');
     const user = new User({ email, password: hashedPassword, username, foxyPesos: 1000 });
+    console.log('Attempting to save user:', user);
     await user.save();
+    console.log('User saved successfully');
     const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET);
+    console.log('Token generated:', token);
+    console.log('Sending success response');
     res.status(201).json({ token, foxyPesos: user.foxyPesos });
   } catch (error) {
-    console.error(error);
+    console.error('Error during signup:', error.message);
     if (error.code === 11000) {
+      console.log('Database unique constraint violation:', error.message);
       return res.status(400).json({ error: 'Username or email already taken' });
     }
+    console.log('Sending error response');
     res.status(500).json({ error: 'Error signing up' });
   }
 });
@@ -175,6 +187,7 @@ app.post('/api/clear-rooms', async (req, res) => {
 io.on('connection', (socket) => {
   console.log('User connected:', socket.id);
   socket.on('join', (userId) => {
+    console.log('Join signal received for userId:', userId);
     socket.join(userId);
   });
   socket.on('disconnect', () => {
