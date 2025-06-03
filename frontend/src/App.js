@@ -14,13 +14,15 @@ const App = () => {
   const [user, setUser] = useState(null);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [username, setUsername] = useState(''); // Add username state
+  const [username, setUsername] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [wager, setWager] = useState('');
   const [rooms, setRooms] = useState([]);
   const [roomId, setRoomId] = useState(null);
   const [gameState, setGameState] = useState(null);
   const [errorMessage, setErrorMessage] = useState('');
   const [isPlaying, setIsPlaying] = useState(false);
+  const [authStep, setAuthStep] = useState('initial'); // 'initial', 'newUser', 'login'
   const audioRef = useRef(null);
 
   useEffect(() => {
@@ -118,13 +120,41 @@ const App = () => {
     }
   };
 
+  const checkCredentials = async () => {
+    try {
+      const response = await axios.post(`${process.env.REACT_APP_API_URL}/api/check-email`, { email });
+      if (!response.data.exists) {
+        setAuthStep('newUser');
+      } else {
+        const loginResponse = await axios.post(`${process.env.REACT_APP_API_URL}/api/login`, { email, password });
+        const decoded = jwtDecode(loginResponse.data.token);
+        const userData = await axios.get(`${process.env.REACT_APP_API_URL}/api/user`, {
+          headers: { Authorization: `Bearer ${loginResponse.data.token}` }
+        });
+        setUser({ token: loginResponse.data.token, foxyPesos: loginResponse.data.foxyPesos, _id: decoded.userId, username: userData.data.username });
+        axios.defaults.headers.common['Authorization'] = `Bearer ${loginResponse.data.token}`;
+        if (!isPlaying) toggleAudio();
+        setAuthStep('initial');
+      }
+    } catch (error) {
+      console.error('Error checking credentials:', error.message);
+      setErrorMessage(error.response?.data?.error || 'Error checking credentials');
+      setAuthStep('login'); // Stay on login for retry
+    }
+  };
+
   const signup = async () => {
+    if (password !== confirmPassword) {
+      setErrorMessage('Passwords do not match');
+      return;
+    }
     try {
       const response = await axios.post(`${process.env.REACT_APP_API_URL}/api/signup`, { email, password, username });
       const decoded = jwtDecode(response.data.token);
       setUser({ token: response.data.token, foxyPesos: response.data.foxyPesos, _id: decoded.userId, username });
       axios.defaults.headers.common['Authorization'] = `Bearer ${response.data.token}`;
       if (!isPlaying) toggleAudio();
+      setAuthStep('initial');
     } catch (error) {
       console.error('Error signing up:', error.message);
       setErrorMessage(error.response?.data?.error || 'Error signing up');
@@ -141,6 +171,7 @@ const App = () => {
       setUser({ token: response.data.token, foxyPesos: response.data.foxyPesos, _id: decoded.userId, username: userData.data.username });
       axios.defaults.headers.common['Authorization'] = `Bearer ${response.data.token}`;
       if (!isPlaying) toggleAudio();
+      setAuthStep('initial');
     } catch (error) {
       console.error('Error logging in:', error.message);
       setErrorMessage(error.response?.data?.error || 'Error logging in');
@@ -234,31 +265,74 @@ const App = () => {
       <h1>Death Roll</h1>
       {!user ? (
         <div className="auth-form">
-          <input
-            type="text"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            placeholder="Username"
-            className="input"
-          />
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="Email"
-            className="input"
-          />
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="Password"
-            className="input"
-          />
-          <div className="button-group">
-            <button onClick={signup} className="button">Signup</button>
-            <button onClick={login} className="button">Login</button>
-          </div>
+          {authStep === 'initial' && (
+            <>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Email"
+                className="input"
+              />
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Password"
+                className="input"
+              />
+              <button onClick={checkCredentials} className="button">Submit</button>
+            </>
+          )}
+          {authStep === 'newUser' && (
+            <>
+              <input
+                type="text"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                placeholder="Username"
+                className="input"
+              />
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Password"
+                className="input"
+              />
+              <input
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="Confirm Password"
+                className="input"
+              />
+              <div className="button-group">
+                <button onClick={signup} className="button">Signup</button>
+                <button onClick={() => setAuthStep('initial')} className="button">Back</button>
+              </div>
+            </>
+          )}
+          {authStep === 'login' && (
+            <>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Email"
+                className="input"
+              />
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Password"
+                className="input"
+              />
+              <button onClick={login} className="button">Login</button>
+            </>
+          )}
+          {errorMessage && <p className="error">{errorMessage}</p>}
           <button onClick={toggleAudio} className="button">Toggle Music</button>
         </div>
       ) : (
