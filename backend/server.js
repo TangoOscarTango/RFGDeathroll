@@ -25,14 +25,12 @@ mongoose.connect(process.env.MONGODB_URI, { useNewUrlParser: true, useUnifiedTop
   .then(() => console.log('Connected to MongoDB'))
   .catch(err => console.error('MongoDB connection error:', err));
 
-// Schema for a counter to generate incremental player IDs
 const CounterSchema = new mongoose.Schema({
   _id: String,
   sequence_value: Number
 });
 const Counter = mongoose.model('Counter', CounterSchema);
 
-// Function to get the next sequence value for playerId
 const getNextSequenceValue = async (sequenceName) => {
   const counter = await Counter.findOneAndUpdate(
     { _id: sequenceName },
@@ -45,8 +43,8 @@ const getNextSequenceValue = async (sequenceName) => {
 const UserSchema = new mongoose.Schema({
   email: String,
   password: String,
-  username: { type: String, unique: true }, // Add username field, ensure unique
-  playerId: Number, // Add incremental playerId
+  username: { type: String, unique: true },
+  playerId: Number,
   foxyPesos: { type: Number, default: 1000 },
 });
 const RoomSchema = new mongoose.Schema({
@@ -74,19 +72,25 @@ const auth = async (req, res, next) => {
   }
 };
 
+app.post('/api/check-email', async (req, res) => {
+  const { email } = req.body;
+  const user = await User.findOne({ email });
+  res.json({ exists: !!user });
+});
+
 app.post('/api/signup', async (req, res) => {
   const { email, password, username } = req.body;
-  if (!username) return res.status(400).json({ error: 'Username is required' });
+  if (!email || !password || !username) return res.status(400).json({ error: 'All fields are required' });
   const hashedPassword = await bcrypt.hash(password, 10);
-  const playerId = await getNextSequenceValue('playerId'); // Get incremental playerId
+  const playerId = await getNextSequenceValue('playerId');
   try {
     const user = new User({ email, password: hashedPassword, username, playerId, foxyPesos: 1000 });
     await user.save();
     const token = jwt.sign({ userId: user._id }, JWT_SECRET);
     res.json({ token, foxyPesos: user.foxyPesos });
   } catch (error) {
-    if (error.code === 11000) { // Duplicate key error (username)
-      return res.status(400).json({ error: 'Username already taken' });
+    if (error.code === 11000) {
+      return res.status(400).json({ error: 'Username or email already taken' });
     }
     res.status(500).json({ error: 'Error signing up' });
   }
@@ -95,11 +99,19 @@ app.post('/api/signup', async (req, res) => {
 app.post('/api/login', async (req, res) => {
   const { email, password } = req.body;
   const user = await User.findOne({ email });
-  if (!user || !(await bcrypt.compare(password, user.password))) {
-    return res.status(401).json({ error: 'Invalid credentials' });
+  if (!user) {
+    return res.status(400).json({ error: 'Email not found' });
+  }
+  if (!(await bcrypt.compare(password, user.password))) {
+    return res.status(401).json({ error: 'Incorrect password' });
   }
   const token = jwt.sign({ userId: user._id }, JWT_SECRET);
   res.json({ token, foxyPesos: user.foxyPesos });
+});
+
+app.get('/api/user', auth, async (req, res) => {
+  const user = await User.findById(req.user._id);
+  res.json({ username: user.username, foxyPesos: user.foxyPesos });
 });
 
 app.post('/api/rooms', auth, async (req, res) => {
@@ -130,7 +142,7 @@ app.post('/api/rooms/:id/join', auth, async (req, res) => {
   await req.user.save();
   room.player2 = req.user._id;
   room.status = 'active';
-  room.currentMax = 25; // Temporary setting for faster testing
+  room.currentMax = 25;
   room.currentPlayer = room.player1;
   room.rolls = [];
   await room.save();
