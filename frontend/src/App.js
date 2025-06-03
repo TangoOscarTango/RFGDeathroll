@@ -1,3 +1,4 @@
+// frontend/src/App.js
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import io from 'socket.io-client';
@@ -14,301 +15,280 @@ const App = () => {
   const [user, setUser] = useState(null);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [wager, setWager] = useState('');
-  const [rooms, setRooms] = useState([]);
   const [roomId, setRoomId] = useState(null);
   const [gameState, setGameState] = useState(null);
-  const [errorMessage, setErrorMessage] = useState('');
-  const [isPlaying, setIsPlaying] = useState(false);
+  const [wager, setWager] = useState(20);
+  const [rooms, setRooms] = useState([]);
   const audioRef = useRef(null);
+  const [isPlaying, setIsPlaying] = useState(false);
 
+  // ─── USER AUTH / FETCH ─────────────────────────────────────────────────────────
   useEffect(() => {
-    const checkActiveRoom = async () => {
-      if (user) {
-        const response = await axios.get(`${process.env.REACT_APP_API_URL}/api/rooms`);
-        const activeRoom = response.data.find(room => room.status === 'active' && (room.player1._id === user._id || (room.player2 && room.player2._id === user._id)));
-        if (activeRoom) {
-          setRoomId(activeRoom.roomId);
-          setGameState(activeRoom);
-        }
-      }
-    };
-
-    socket.on('connect', () => console.log('Socket connected:', socket.id));
-    socket.on('disconnect', (reason) => console.log('Socket disconnected:', reason));
-    socket.on('reconnect', (attempt) => console.log('Socket reconnected, attempt:', attempt));
-    socket.on('connect_error', (error) => console.log('Socket connect error:', error.message));
-
-    socket.on('roomCreated', (room) => {
-      console.log('Room created:', room);
-      setRooms([...rooms, room]);
-    });
-    socket.on('playerJoined', (room) => {
-      console.log('Player joined:', room);
-      setRooms(rooms.map(r => r.roomId === room.roomId ? room : r));
-      if (room.roomId === roomId) {
-        console.log('Updating game state:', room);
-        setGameState(room);
-      }
-    });
-    socket.on('rollResult', (data) => {
-      console.log('Socket event rollResult received for roomId:', data.roomId, 'current roomId:', roomId);
-      if (data.roomId === roomId) {
-        console.log('Roll result received and matched:', data);
-        setGameState(prev => {
-          const newRolls = [...(prev.rolls || []), data];
-          console.log('New rolls array:', newRolls);
-          return { ...prev, rolls: newRolls, currentMax: data.value, currentPlayer: data.player === prev.player1._id ? prev.player2._id : prev.player1._id };
-        });
-      } else {
-        console.log('Roll result ignored, roomId mismatch:', data.roomId, 'vs', roomId);
-      }
-    });
-    socket.on('gameEnded', (data) => {
-      console.log('Socket event gameEnded received for roomId:', data.roomId, 'current roomId:', roomId);
-      if (data.roomId === roomId) {
-        console.log('Game ended received and matched:', data);
-        setGameState(prev => {
-          console.log('Setting game state to closed with winner:', data.winner);
-          return { ...prev, status: 'closed', winner: data.winner };
-        });
-        // Don't immediately set roomId to null - let the user see the result first
-      } else {
-        console.log('Game ended ignored, roomId mismatch:', data.roomId, 'vs', roomId);
-      }
-    });
-    socket.on('roomsCleared', () => {
-      setRooms([]);
-      if (!roomId) fetchRooms();
-    });
-    fetchRooms();
-    checkActiveRoom();
-    return () => socket.disconnect();
-  }, [rooms, roomId, gameState, user]);
-
-  const fetchRooms = async () => {
-    try {
-      const response = await axios.get(`${process.env.REACT_APP_API_URL}/api/rooms`);
-      setRooms(response.data);
-    } catch (error) {
-      console.error('Error fetching rooms:', error.message);
+    // If there is a token in localStorage, decode it and fetch the user’s info
+    const token = localStorage.getItem('jwtToken');
+    if (token) {
+      const decoded = jwtDecode(token);
+      axios
+        .get(`${process.env.REACT_APP_API_URL}/api/user-info`, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        .then((res) => setUser(res.data))
+        .catch(() => localStorage.removeItem('jwtToken'));
     }
-  };
+  }, []);
 
+  // ─── SOCKET LISTENERS ───────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!roomId) return;
+
+    // Whenever the server tells us which room state, capture it
+    socket.on('roomUpdate', (data) => {
+      if (data.roomId === roomId) {
+        setGameState((prev) => ({
+          ...prev,
+          currentPlayer: data.currentPlayer,
+          maxRoll: data.maxRoll,
+          players: data.players,
+          status: data.status,
+        }));
+      }
+    });
+
+    // When a roll happens, we update rollValue + switch currentPlayer
+    socket.on('rollResult', (data) => {
+      if (data.roomId === roomId) {
+        setGameState((prev) => ({
+          ...prev,
+          rollValue: data.rollValue,
+          currentPlayer: data.nextPlayer,
+        }));
+      }
+    });
+
+    // ─── NEW: “WE SAW END” HANDLER ───────────────────────────────────────────────
+    socket.on('gameEnded', (data) => {
+      console.log(
+        'Socket event gameEnded received for roomId:',
+        data.roomId,
+        'current roomId:',
+        roomId
+      );
+      if (data.roomId === roomId) {
+        // Instead of immediately setting status:'closed', we set hasEnded:true
+        console.log('Game ended received and matched:', data);
+        setGameState((prev) => ({
+          ...prev,
+          hasEnded: true,
+          winner: data.winner,
+          // leave status alone (or mark it if you want: status:'ended' – but component will use hasEnded)
+        }));
+      }
+    });
+
+    return () => {
+      socket.off('roomUpdate');
+      socket.off('rollResult');
+      socket.off('gameEnded');
+    };
+  }, [roomId]);
+
+  // ─── LOGIN / SIGNUP FUNCTIONS ─────────────────────────────────────────────────
   const signup = async () => {
     try {
-      const response = await axios.post(`${process.env.REACT_APP_API_URL}/api/signup`, { email, password });
-      const decoded = jwtDecode(response.data.token);
-      setUser({ token: response.data.token, foxyPesos: response.data.foxyPesos, _id: decoded.userId });
-      axios.defaults.headers.common['Authorization'] = `Bearer ${response.data.token}`;
-      if (!isPlaying) toggleAudio();
-    } catch (error) {
-      console.error('Error signing up:', error.message);
+      const res = await axios.post(`${process.env.REACT_APP_API_URL}/api/signup`, {
+        email,
+        password,
+      });
+      localStorage.setItem('jwtToken', res.data.token);
+      setUser(res.data.user);
+    } catch (err) {
+      console.error(err);
     }
   };
 
   const login = async () => {
     try {
-      const response = await axios.post(`${process.env.REACT_APP_API_URL}/api/login`, { email, password });
-      const decoded = jwtDecode(response.data.token);
-      setUser({ token: response.data.token, foxyPesos: response.data.foxyPesos, _id: decoded.userId });
-      axios.defaults.headers.common['Authorization'] = `Bearer ${response.data.token}`;
-      if (!isPlaying) toggleAudio();
-    } catch (error) {
-      console.error('Error logging in:', error.message);
+      const res = await axios.post(`${process.env.REACT_APP_API_URL}/api/login`, {
+        email,
+        password,
+      });
+      localStorage.setItem('jwtToken', res.data.token);
+      setUser(res.data.user);
+    } catch (err) {
+      console.error(err);
     }
   };
 
+  // ─── ROOM LISTING / CREATION ───────────────────────────────────────────────────
+  useEffect(() => {
+    if (!user) return;
+    // Fetch all open rooms so the user can join
+    axios
+      .get(`${process.env.REACT_APP_API_URL}/api/rooms`)
+      .then((res) => setRooms(res.data))
+      .catch((err) => console.error(err));
+  }, [user]);
+
   const createRoom = async () => {
-    const wagerValue = parseInt(wager);
-    if (isNaN(wagerValue) || wagerValue < 20) {
-      setErrorMessage('Wager must be at least 20 Foxy Pesos');
-      return;
-    }
-    const originalFoxyPesos = user ? user.foxyPesos : 0;
     try {
-      console.log('Attempting to create room with wager:', wagerValue);
-      const response = await axios.post(`${process.env.REACT_APP_API_URL}/api/rooms`, { wager: wagerValue });
-      console.log('Room created:', response.data);
-      setRoomId(response.data.roomId);
-      setGameState(response.data);
-      fetchRooms();
-      setErrorMessage('');
-    } catch (error) {
-      console.error('Error creating room:', error.message);
-      setErrorMessage(error.response?.data?.error || 'Error creating room');
-      if (user) setUser({ ...user, foxyPesos: originalFoxyPesos });
+      const res = await axios.post(
+        `${process.env.REACT_APP_API_URL}/api/rooms`,
+        { wager },
+        { headers: { Authorization: `Bearer ${localStorage.getItem('jwtToken')}` } }
+      );
+      setRoomId(res.data.roomId);
+      setGameState({
+        roomId: res.data.roomId,
+        players: [user._id],
+        currentPlayer: res.data.currentPlayer,
+        maxRoll: res.data.maxRoll,
+        status: res.data.status,
+        wager: res.data.wager,
+        hasEnded: false,
+        winner: null,
+      });
+      socket.emit('joinRoom', { roomId: res.data.roomId });
+    } catch (err) {
+      console.error(err);
     }
   };
 
   const joinRoom = async (id) => {
-    const originalFoxyPesos = user ? user.foxyPesos : 0;
     try {
-      const response = await axios.post(`${process.env.REACT_APP_API_URL}/api/rooms/${id}/join`);
-      console.log('Joined room:', response.data);
+      await axios.post(
+        `${process.env.REACT_APP_API_URL}/api/rooms/${id}/join`,
+        {},
+        { headers: { Authorization: `Bearer ${localStorage.getItem('jwtToken')}` } }
+      );
       setRoomId(id);
-      setGameState(response.data);
-    } catch (error) {
-      console.error('Error joining room:', error.message);
-      if (user) setUser({ ...user, foxyPesos: originalFoxyPesos });
+      // Initialize gameState with what the server returns
+      const roomRes = await axios.get(`${process.env.REACT_APP_API_URL}/api/rooms/${id}`);
+      setGameState({
+        roomId: roomRes.data.roomId,
+        players: roomRes.data.players,
+        currentPlayer: roomRes.data.currentPlayer,
+        maxRoll: roomRes.data.maxRoll,
+        status: roomRes.data.status,
+        wager: roomRes.data.wager,
+        hasEnded: false,
+        winner: null,
+      });
+      socket.emit('joinRoom', { roomId: id });
+    } catch (err) {
+      console.error(err);
     }
   };
 
+  // ─── ROLL FUNCTION ─────────────────────────────────────────────────────────────
   const roll = async () => {
+    if (!roomId) return;
     try {
-      const response = await axios.post(`${process.env.REACT_APP_API_URL}/api/rooms/${roomId}/roll`);
-      console.log('Roll response:', response.data);
-    } catch (error) {
-      console.error('Error rolling:', error.message);
+      const res = await axios.post(
+        `${process.env.REACT_APP_API_URL}/api/rooms/${roomId}/roll`,
+        {},
+        { headers: { Authorization: `Bearer ${localStorage.getItem('jwtToken')}` } }
+      );
+      // The server will emit 'rollResult' or 'gameEnded' accordingly
+    } catch (err) {
+      console.error(err);
     }
   };
 
-  const clearRooms = async () => {
-    try {
-      await axios.post(`${process.env.REACT_APP_API_URL}/api/clear-rooms`);
-      console.log('Rooms cleared');
-    } catch (error) {
-      console.error('Error clearing rooms:', error.message);
-    }
-  };
-
+  // ─── AUDIO CONTROL ─────────────────────────────────────────────────────────────
   const toggleAudio = () => {
-    if (!audioRef.current) {
-      audioRef.current = new Audio('https://rfgdeathroll-frontend.onrender.com/Deathroll.mp3');
-      audioRef.current.loop = true;
-      audioRef.current.volume = 0;
-    }
+    if (!audioRef.current) return;
     if (isPlaying) {
       audioRef.current.pause();
+      setIsPlaying(false);
     } else {
-      audioRef.current.play().then(() => {
-        let fade = setInterval(() => {
-          if (audioRef.current.volume < 1) audioRef.current.volume = Math.min(1, audioRef.current.volume + 0.01);
-          else clearInterval(fade);
-        }, 10);
-      }).catch(err => console.error('Audio play failed:', err));
+      audioRef.current.volume = 0;
+      audioRef.current.play();
+      // 2-second fade-in
+      let vol = 0;
+      const fadeIn = setInterval(() => {
+        vol += 0.05;
+        if (vol >= 1) {
+          vol = 1;
+          clearInterval(fadeIn);
+        }
+        audioRef.current.volume = vol;
+      }, 100);
+      setIsPlaying(true);
     }
-    setIsPlaying(!isPlaying);
   };
 
+  // ─── RENDER ────────────────────────────────────────────────────────────────────
   return (
-    <div className="container">
-      <h1>Death Roll</h1>
-      {!user ? (
-        <div className="auth-form">
+    <div className="App">
+      {/* ─── AUDIO ELEMENT ─────────────────────────────── */}
+      <audio ref={audioRef} loop>
+        <source src="/Deathroll.mp3" type="audio/mpeg" />
+      </audio>
+
+      {!user && (
+        <div className="auth-container">
+          <h2>Login / Signup</h2>
           <input
             type="email"
+            placeholder="Email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder="Email"
-            className="input"
           />
           <input
             type="password"
+            placeholder="Password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            placeholder="Password"
-            className="input"
           />
-          <div className="button-group">
-            <button onClick={signup} className="button">Signup</button>
-            <button onClick={login} className="button">Login</button>
+          <div>
+            <button onClick={login} className="button">
+              Login
+            </button>
+            <button onClick={signup} className="button">
+              Signup
+            </button>
           </div>
-          <button onClick={toggleAudio} className="button">Toggle Music</button>
         </div>
-      ) : (
-        <>
-          <p>Foxy Pesos: {user.foxyPesos}</p>
-          {errorMessage && <p className="error">{errorMessage}</p>}
-          {!roomId ? (
-            <>
-              <div className="room-form">
-                <input
-                  type="number"
-                  value={wager}
-                  onChange={(e) => setWager(e.target.value)}
-                  placeholder="Wager (min 20 FP)"
-                  className="input"
-                  min="20"
-                />
-                <button onClick={() => { console.log('Create button clicked'); createRoom(); }} className="button">Create Room</button>
+      )}
+
+      {user && !roomId && (
+        <div className="lobby-container">
+          <h2>Welcome, {user.email}</h2>
+          <p>Your Foxy Pesos: {user.foxyPesos}</p>
+
+          <div className="create-room">
+            <h3>Create a new room</h3>
+            <input
+              type="number"
+              min="20"
+              value={wager}
+              onChange={(e) => setWager(Number(e.target.value))}
+            />
+            <button onClick={createRoom} className="button">
+              Create (min 20)
+            </button>
+          </div>
+
+          <div className="room-list">
+            <h3>Join an existing room</h3>
+            {rooms.map((r) => (
+              <div key={r.roomId} className="room-item">
+                <span>Room {r.roomId} | Wager: {r.wager}</span>
+                <button onClick={() => joinRoom(r.roomId)} className="button">
+                  Join
+                </button>
               </div>
-              <h2>Open Rooms</h2>
-              <ul>
-                {rooms.map(room => (
-                  <li key={room.roomId} className="room-item">
-                    Room {room.roomId} - Wager: {room.wager} FP - Status: {room.status}
-                    {room.status === 'open' && (
-                      <button onClick={() => joinRoom(room.roomId)} className="button join-button">Join</button>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            </>
-          ) : (
-            <div>
-              <h2>Room {roomId}</h2>
-              {gameState && (
-                <>
-                  <p>Status: {gameState.status}</p>
-                  <p>Current Max: {gameState.currentMax || 'N/A'}</p>
-                  <p>Current Player: {gameState.currentPlayer && user._id ? (gameState.currentPlayer._id === user._id ? 'You' : 'Opponent') : 'N/A'}</p>
-                  {gameState.rolls && gameState.rolls.map((roll, i) => (
-                    <p key={i}>{roll.player && user._id ? (roll.player._id === user._id ? 'You' : 'Opponent') : 'Unknown'} rolled: {roll.value}</p>
-                  ))}
-                  {gameState.status === 'active' && gameState.currentPlayer && user._id && gameState.currentPlayer._id === user._id && (
-                    <button onClick={roll} className="button">Roll</button>
-                  )}
-                  {gameState.status === 'closed' && gameState.winner && (
-                    <div>
-                      <p>Game Over! Winner: {gameState.winner === user._id ? 'You' : 'Opponent'}</p>
-                      <button onClick={async () => {
-                        setRoomId(null);
-                        setGameState(null);
-                        // Refresh user's foxy pesos
-                        try {
-                          const response = await axios.get(`${process.env.REACT_APP_API_URL}/api/user-info`);
-                          setUser(prev => ({ ...prev, foxyPesos: response.data.foxyPesos }));
-                        } catch (err) {
-                          console.log('Could not refresh user info');
-                        }
-                      }} className="button">Back to Home</button>
-                    </div>
-                  )}
-                </>
-              )}
-            </div>
-          )}
-          <button
-            onClick={clearRooms}
-            style={{
-              position: 'fixed',
-              bottom: '10px',
-              right: '10px',
-              width: '40px',
-              height: '40px',
-              background: 'transparent',
-              border: 'none',
-              cursor: 'pointer',
-              opacity: 0,
-              transition: 'opacity 0.3s',
-            }}
-            onMouseEnter={(e) => (e.target.style.opacity = 1)}
-            onMouseLeave={(e) => (e.target.style.opacity = 0)}
-          >
-            Clear Rooms
-          </button>
+            ))}
+          </div>
+
+          {/* Music toggle, bottom-left */}
           <button
             onClick={toggleAudio}
+            className="audio-toggle"
             style={{
               position: 'fixed',
-              bottom: '10px',
-              left: '10px',
-              width: '40px',
-              height: '40px',
-              background: 'transparent',
-              border: 'none',
-              cursor: 'pointer',
+              bottom: 20,
+              left: 20,
               opacity: 0,
               transition: 'opacity 0.3s',
             }}
@@ -317,7 +297,114 @@ const App = () => {
           >
             {isPlaying ? '🔇' : '🎵'}
           </button>
-        </>
+        </div>
+      )}
+
+      {user && roomId && gameState && (
+        <div className="game-container">
+          {/* Display background */}
+          <img src="/background.png" alt="Background" className="background-img" />
+
+          {/* Show room info */}
+          <div className="room-info">
+            <h3>Room {gameState.roomId}</h3>
+            <p>Wager: {gameState.wager} Foxy Pesos each</p>
+            <p>
+              Turn: {gameState.currentPlayer === user._id ? 'Your turn' : 'Opponent’s turn'}
+            </p>
+            <p>Max roll: {gameState.maxRoll}</p>
+          </div>
+
+          {/* If someone has rolled at least once, show the last roll */}
+          {typeof gameState.rollValue === 'number' && (
+            <div className="last-roll">
+              <p>Last roll: {gameState.rollValue}</p>
+            </div>
+          )}
+
+          {/* Normal Roll button (only if game hasn’t ended AND it’s your turn) */}
+          {gameState.currentPlayer === user._id &&
+            !gameState.hasEnded &&
+            gameState.status === 'open' && (
+              <button onClick={roll} className="button">
+                Roll
+              </button>
+            )}
+
+          {/* ─── “GAME OVER” PANEL ──────────────────────────────────────────── */}
+          {gameState.hasEnded && gameState.winner && (
+            <div className="game-over-panel">
+              <p>
+                Game Over! Winner:{' '}
+                {gameState.winner === user._id ? 'You' : 'Opponent'}
+              </p>
+              <button
+                onClick={async () => {
+                  // 1) Clear out the room (back to Lobby)
+                  setRoomId(null);
+                  setGameState(null);
+
+                  // 2) Refresh the user's Foxy Pesos from backend
+                  try {
+                    const response = await axios.get(
+                      `${process.env.REACT_APP_API_URL}/api/user-info`
+                    );
+                    setUser((prev) => ({
+                      ...prev,
+                      foxyPesos: response.data.foxyPesos,
+                    }));
+                  } catch (err) {
+                    console.log('Could not refresh user info');
+                  }
+                }}
+                className="button"
+              >
+                Back to Home
+              </button>
+            </div>
+          )}
+
+          {/* Music toggle, bottom-left */}
+          <button
+            onClick={toggleAudio}
+            className="audio-toggle"
+            style={{
+              position: 'fixed',
+              bottom: 20,
+              left: 20,
+              opacity: 0,
+              transition: 'opacity 0.3s',
+            }}
+            onMouseEnter={(e) => (e.target.style.opacity = 1)}
+            onMouseLeave={(e) => (e.target.style.opacity = 0)}
+          >
+            {isPlaying ? '🔇' : '🎵'}
+          </button>
+
+          {/* Clear Rooms button (admin) bottom-right */}
+          <button
+            onClick={async () => {
+              try {
+                await axios.delete(`${process.env.REACT_APP_API_URL}/api/rooms`);
+                setRooms([]);
+              } catch (err) {
+                console.error(err);
+              }
+            }}
+            className="audio-toggle"
+            style={{
+              position: 'fixed',
+              bottom: 20,
+              right: 20,
+              opacity: 0,
+              transition: 'opacity 0.3s',
+            }}
+            onMouseEnter={(e) => (e.target.style.opacity = 1)}
+            onMouseLeave={(e) => (e.target.style.opacity = 0)}
+          >
+            Clear Rooms
+          </button>
+        </div>
       )}
     </div>
   );
