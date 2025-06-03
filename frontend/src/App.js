@@ -58,10 +58,12 @@ const App = () => {
     try {
       setErrorMessage('');
       const response = await axios.post(`${process.env.REACT_APP_API_URL}/api/check-email`, { email });
+      console.log('Check email response received:', response.data);
       if (!response.data.exists) {
         setAuthStep('newUser');
       } else {
         const loginResponse = await axios.post(`${process.env.REACT_APP_API_URL}/api/login`, { email, password });
+        console.log('Login response received:', loginResponse.data);
         const decoded = jwtDecode(loginResponse.data.token);
         const userData = await axios.get(`${process.env.REACT_APP_API_URL}/api/user`, {
           headers: { Authorization: `Bearer ${loginResponse.data.token}` }
@@ -85,15 +87,18 @@ const App = () => {
     }
     try {
       setErrorMessage('');
+      console.log('Sending signup request:', { email, password, username });
       const response = await axios.post(`${process.env.REACT_APP_API_URL}/api/signup`, { email, password, username });
+      console.log('Signup response received:', response.data);
       const decoded = jwtDecode(response.data.token);
       setUser({ token: response.data.token, foxyPesos: response.data.foxyPesos, _id: decoded.userId, username });
       axios.defaults.headers.common['Authorization'] = `Bearer ${response.data.token}`;
       if (!isPlaying) toggleAudio();
       setAuthStep('initial');
     } catch (error) {
-      console.error('Error signing up:', error.message);
+      console.error('Error during signup:', error.message);
       const errorMsg = error.response?.data?.error || 'Error signing up';
+      console.log('Signup error response:', errorMsg);
       if (errorMsg.includes('Username')) {
         setErrorMessage('Username already taken, please choose another');
         setUsername('');
@@ -107,6 +112,7 @@ const App = () => {
     try {
       setErrorMessage('');
       const response = await axios.post(`${process.env.REACT_APP_API_URL}/api/login`, { email, password });
+      console.log('Login response received:', response.data);
       const decoded = jwtDecode(response.data.token);
       const userData = await axios.get(`${process.env.REACT_APP_API_URL}/api/user`, {
         headers: { Authorization: `Bearer ${response.data.token}` }
@@ -131,7 +137,7 @@ const App = () => {
     try {
       console.log('Attempting to create room with wager:', wagerValue);
       const response = await axios.post(`${process.env.REACT_APP_API_URL}/api/rooms`, { wager: wagerValue });
-      console.log('Room created:', response.data);
+      console.log('Room created response received:', response.data);
       setRoomId(response.data.roomId);
       setGameState(response.data);
       fetchRooms();
@@ -152,7 +158,7 @@ const App = () => {
         socket.emit('join', user._id);
       });
       socket.on('playerJoined', (room) => {
-        console.log('Player joined:', room);
+        console.log('Player joined signal received:', room);
         setRooms(rooms.map(r => r.roomId === room.roomId ? room : r));
         if (room.roomId === id) {
           console.log('Updating game state:', room);
@@ -161,7 +167,7 @@ const App = () => {
         socket.disconnect();
       });
       const response = await axios.post(`${process.env.REACT_APP_API_URL}/api/rooms/${id}/join`);
-      console.log('Joined room:', response.data);
+      console.log('Join room response received:', response.data);
       setRoomId(id);
       setGameState(response.data);
     } catch (error) {
@@ -195,7 +201,7 @@ const App = () => {
         socket.emit('join', user._id);
       });
       socket.on('rollResult', (data) => {
-        console.log('Socket event rollResult received for roomId:', data.roomId, 'current roomId:', roomId);
+        console.log('Roll result signal received:', data);
         if (data.roomId === roomId) {
           console.log('Roll result received and matched:', data);
           setGameState(prev => {
@@ -208,7 +214,7 @@ const App = () => {
         }
       });
       socket.on('gameEnded', (data) => {
-        console.log('Socket event gameEnded received for roomId:', data.roomId, 'current roomId:', roomId);
+        console.log('Game ended signal received:', data);
         if (data.roomId === roomId) {
           console.log('Game ended received and matched:', data);
           setGameState(prev => {
@@ -223,7 +229,7 @@ const App = () => {
         socket.disconnect();
       });
       const response = await axios.post(`${process.env.REACT_APP_API_URL}/api/rooms/${roomId}/roll`);
-      console.log('Roll response:', response.data);
+      console.log('Roll response received:', response.data);
       if (response.data.rollValue === 1) {
         console.log('Rolled a 1, manually fetching game state');
         const currentRoom = await fetchRoomStateWithRetry(roomId);
