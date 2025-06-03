@@ -43,6 +43,11 @@ const App = () => {
         console.log('Keep-alive ping sent');
       } catch (error) {
         console.error('Keep-alive ping failed:', error.message);
+        // Attempt to reconnect Socket.IO if keep-alive fails
+        if (!socket.connected) {
+          console.log('Attempting to reconnect Socket.IO');
+          socket.connect();
+        }
       }
     }, 30000);
 
@@ -139,7 +144,7 @@ const App = () => {
     } catch (error) {
       console.error('Error checking credentials:', error.message);
       setErrorMessage(error.response?.data?.error || 'Error checking credentials');
-      setAuthStep('login'); // Stay on login for retry
+      setAuthStep('login');
     }
   };
 
@@ -155,9 +160,15 @@ const App = () => {
       axios.defaults.headers.common['Authorization'] = `Bearer ${response.data.token}`;
       if (!isPlaying) toggleAudio();
       setAuthStep('initial');
+      setErrorMessage('');
     } catch (error) {
       console.error('Error signing up:', error.message);
-      setErrorMessage(error.response?.data?.error || 'Error signing up');
+      if (error.response?.data?.error.includes('Username')) {
+        setErrorMessage('Username already taken, please choose another');
+        setUsername(''); // Clear username field
+      } else {
+        setErrorMessage(error.response?.data?.error || 'Error signing up');
+      }
     }
   };
 
@@ -172,6 +183,7 @@ const App = () => {
       axios.defaults.headers.common['Authorization'] = `Bearer ${response.data.token}`;
       if (!isPlaying) toggleAudio();
       setAuthStep('initial');
+      setErrorMessage('');
     } catch (error) {
       console.error('Error logging in:', error.message);
       setErrorMessage(error.response?.data?.error || 'Error logging in');
@@ -217,14 +229,18 @@ const App = () => {
     try {
       const response = await axios.post(`${process.env.REACT_APP_API_URL}/api/rooms/${roomId}/roll`);
       console.log('Roll response:', response.data);
-      if (response.data.rollValue === 1) {
-        console.log('Roll value is 1, manually checking game state');
-        const updatedRoom = await axios.get(`${process.env.REACT_APP_API_URL}/api/rooms`);
-        const currentRoom = updatedRoom.data.find(r => r.roomId === roomId);
-        if (currentRoom && currentRoom.status === 'closed') {
-          console.log('Game ended detected via fallback:', currentRoom);
-          setGameState(prev => ({ ...prev, status: 'closed', winner: currentRoom.winner }));
-          setRoomId(null);
+      // Fallback: If roll is 1 or Socket.IO fails, fetch the full room state
+      if (!socket.connected || response.data.rollValue === 1) {
+        console.log('Socket not connected or rolled a 1, manually fetching game state');
+        const updatedRoomResponse = await axios.get(`${process.env.REACT_APP_API_URL}/api/rooms`);
+        const currentRoom = updatedRoomResponse.data.find(r => r.roomId === roomId);
+        if (currentRoom) {
+          console.log('Updated room state fetched:', currentRoom);
+          setGameState(currentRoom);
+          if (currentRoom.status === 'closed') {
+            console.log('Game ended detected via fallback:', currentRoom);
+            setTimeout(() => setRoomId(null), 100); // Slight delay to ensure UI updates
+          }
         }
       }
     } catch (error) {
