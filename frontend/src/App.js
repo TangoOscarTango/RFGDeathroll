@@ -8,6 +8,8 @@ const socket = io(process.env.REACT_APP_API_URL || 'http://localhost:3001', {
   reconnection: true,
   reconnectionAttempts: 10,
   reconnectionDelay: 1000,
+  // Delay initial connection to give backend time to wake up
+  autoConnect: false,
 });
 
 const App = () => {
@@ -22,7 +24,7 @@ const App = () => {
   const [gameState, setGameState] = useState(null);
   const [errorMessage, setErrorMessage] = useState('');
   const [isPlaying, setIsPlaying] = useState(false);
-  const [authStep, setAuthStep] = useState('initial'); // 'initial', 'newUser', 'login'
+  const [authStep, setAuthStep] = useState('initial');
   const audioRef = useRef(null);
 
   useEffect(() => {
@@ -37,13 +39,22 @@ const App = () => {
       }
     };
 
+    // Delay initial Socket.IO connection to ensure backend is awake
+    setTimeout(() => {
+      console.log('Attempting initial Socket.IO connection');
+      socket.connect();
+    }, 2000);
+
     const keepAlive = setInterval(async () => {
       try {
         await axios.get(`${process.env.REACT_APP_API_URL}/api/rooms`);
         console.log('Keep-alive ping sent');
+        if (!socket.connected) {
+          console.log('Attempting to reconnect Socket.IO');
+          socket.connect();
+        }
       } catch (error) {
         console.error('Keep-alive ping failed:', error.message);
-        // Attempt to reconnect Socket.IO if keep-alive fails
         if (!socket.connected) {
           console.log('Attempting to reconnect Socket.IO');
           socket.connect();
@@ -57,6 +68,11 @@ const App = () => {
     });
     socket.on('disconnect', (reason) => {
       console.log('Socket disconnected:', reason);
+      // Force immediate reconnect on disconnect
+      setTimeout(() => {
+        console.log('Attempting immediate reconnect');
+        socket.connect();
+      }, 1000);
     });
     socket.on('reconnect', (attempt) => {
       console.log('Socket reconnected, attempt:', attempt);
@@ -127,6 +143,7 @@ const App = () => {
 
   const checkCredentials = async () => {
     try {
+      setErrorMessage(''); // Clear previous errors
       const response = await axios.post(`${process.env.REACT_APP_API_URL}/api/check-email`, { email });
       if (!response.data.exists) {
         setAuthStep('newUser');
@@ -154,36 +171,37 @@ const App = () => {
       return;
     }
     try {
+      setErrorMessage(''); // Clear previous errors
       const response = await axios.post(`${process.env.REACT_APP_API_URL}/api/signup`, { email, password, username });
       const decoded = jwtDecode(response.data.token);
       setUser({ token: response.data.token, foxyPesos: response.data.foxyPesos, _id: decoded.userId, username });
       axios.defaults.headers.common['Authorization'] = `Bearer ${response.data.token}`;
       if (!isPlaying) toggleAudio();
       setAuthStep('initial');
-      setErrorMessage('');
     } catch (error) {
       console.error('Error signing up:', error.message);
-      if (error.response?.data?.error.includes('Username')) {
+      const errorMsg = error.response?.data?.error || 'Error signing up';
+      if (errorMsg.includes('Username')) {
         setErrorMessage('Username already taken, please choose another');
-        setUsername(''); // Clear username field
+        setUsername('');
       } else {
-        setErrorMessage(error.response?.data?.error || 'Error signing up');
+        setErrorMessage(errorMsg);
       }
     }
   };
 
   const login = async () => {
     try {
+      setErrorMessage(''); // Clear previous errors
       const response = await axios.post(`${process.env.REACT_APP_API_URL}/api/login`, { email, password });
       const decoded = jwtDecode(response.data.token);
       const userData = await axios.get(`${process.env.REACT_APP_API_URL}/api/user`, {
-        headers: { Authorization: `Bearer ${response.data.token}` }
+        headers: { Authorization: `Bearer ${loginResponse.data.token}` }
       });
       setUser({ token: response.data.token, foxyPesos: response.data.foxyPesos, _id: decoded.userId, username: userData.data.username });
       axios.defaults.headers.common['Authorization'] = `Bearer ${response.data.token}`;
       if (!isPlaying) toggleAudio();
       setAuthStep('initial');
-      setErrorMessage('');
     } catch (error) {
       console.error('Error logging in:', error.message);
       setErrorMessage(error.response?.data?.error || 'Error logging in');
@@ -225,22 +243,39 @@ const App = () => {
     }
   };
 
+  const fetchRoomStateWithRetry = async (roomId, retries = 3, delay = 500) => {
+    for (let i = 0; i < retries; i++) {
+      try {
+        const response = await axios.get(`${process.env.REACT_APP_API_URL}/api/rooms`);
+        const currentRoom = response.data.find(r => r.roomId === roomId);
+        if (currentRoom && currentRoom.rolls && currentRoom.rolls.length > 0) {
+          return currentRoom;
+        }
+        console.log(`Roll not found in room state, retrying (${i + 1}/${retries})`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      } catch (error) {
+        console.error('Error fetching room state:', error.message);
+      }
+    }
+    return null;
+  };
+
   const roll = async () => {
     try {
       const response = await axios.post(`${process.env.REACT_APP_API_URL}/api/rooms/${roomId}/roll`);
       console.log('Roll response:', response.data);
-      // Fallback: If roll is 1 or Socket.IO fails, fetch the full room state
       if (!socket.connected || response.data.rollValue === 1) {
         console.log('Socket not connected or rolled a 1, manually fetching game state');
-        const updatedRoomResponse = await axios.get(`${process.env.REACT_APP_API_URL}/api/rooms`);
-        const currentRoom = updatedRoomResponse.data.find(r => r.roomId === roomId);
+        const currentRoom = await fetchRoomStateWithRetry(roomId);
         if (currentRoom) {
           console.log('Updated room state fetched:', currentRoom);
           setGameState(currentRoom);
           if (currentRoom.status === 'closed') {
             console.log('Game ended detected via fallback:', currentRoom);
-            setTimeout(() => setRoomId(null), 100); // Slight delay to ensure UI updates
+            setTimeout(() => setRoomId(null), 100);
           }
+        } else {
+          console.error('Failed to fetch updated room state after retries');
         }
       }
     } catch (error) {
