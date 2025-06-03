@@ -8,7 +8,6 @@ const socket = io(process.env.REACT_APP_API_URL || 'http://localhost:3001', {
   reconnection: true,
   reconnectionAttempts: 10,
   reconnectionDelay: 1000,
-  // Delay initial connection to give backend time to wake up
   autoConnect: false,
 });
 
@@ -39,7 +38,6 @@ const App = () => {
       }
     };
 
-    // Delay initial Socket.IO connection to ensure backend is awake
     setTimeout(() => {
       console.log('Attempting initial Socket.IO connection');
       socket.connect();
@@ -68,7 +66,6 @@ const App = () => {
     });
     socket.on('disconnect', (reason) => {
       console.log('Socket disconnected:', reason);
-      // Force immediate reconnect on disconnect
       setTimeout(() => {
         console.log('Attempting immediate reconnect');
         socket.connect();
@@ -143,7 +140,7 @@ const App = () => {
 
   const checkCredentials = async () => {
     try {
-      setErrorMessage(''); // Clear previous errors
+      setErrorMessage('');
       const response = await axios.post(`${process.env.REACT_APP_API_URL}/api/check-email`, { email });
       if (!response.data.exists) {
         setAuthStep('newUser');
@@ -171,7 +168,7 @@ const App = () => {
       return;
     }
     try {
-      setErrorMessage(''); // Clear previous errors
+      setErrorMessage('');
       const response = await axios.post(`${process.env.REACT_APP_API_URL}/api/signup`, { email, password, username });
       const decoded = jwtDecode(response.data.token);
       setUser({ token: response.data.token, foxyPesos: response.data.foxyPesos, _id: decoded.userId, username });
@@ -192,11 +189,11 @@ const App = () => {
 
   const login = async () => {
     try {
-      setErrorMessage(''); // Clear previous errors
+      setErrorMessage('');
       const response = await axios.post(`${process.env.REACT_APP_API_URL}/api/login`, { email, password });
       const decoded = jwtDecode(response.data.token);
       const userData = await axios.get(`${process.env.REACT_APP_API_URL}/api/user`, {
-        headers: { Authorization: `Bearer ${loginResponse.data.token}` }
+        headers: { Authorization: `Bearer ${response.data.token}` }
       });
       setUser({ token: response.data.token, foxyPesos: response.data.foxyPesos, _id: decoded.userId, username: userData.data.username });
       axios.defaults.headers.common['Authorization'] = `Bearer ${response.data.token}`;
