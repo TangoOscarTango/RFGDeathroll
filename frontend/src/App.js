@@ -240,10 +240,8 @@ const App = () => {
             <p>Status: {currentRoom.status}</p>
             {winner && (
               <p className="text text-xl mt-2">
-                <p>
                 {winner === user._id ? 'You Win!' : 'You Lose!'} Winner: {winner}, Wager Won: {currentRoom.wager * 2}
                 {finalRoll && `, Final Roll: ${finalRoll}`}
-              </p>
             )}
             <div className="mt-4 max-h-48 overflow-y-auto">
               <h3 className="text-lg">Rolls:</h3>
