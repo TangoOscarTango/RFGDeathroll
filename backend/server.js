@@ -27,8 +27,10 @@ app.use(express.json());
 mongoose.connect(process.env.MONGO_URI, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
+  serverSelectionTimeoutMS: 30000, // Increase to 30s
+  socketTimeoutMS: 45000, // Increase to 45s
 }).then(() => console.log('MongoDB connected'))
-  .catch(err => console.log(err));
+  .catch(err => console.error('MongoDB connection error:', err));
 
 const UserSchema = new mongoose.Schema({
   email: { type: String, required: true, unique: true },
