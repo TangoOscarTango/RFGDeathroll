@@ -207,7 +207,7 @@ io.on('connection', (socket) => {
   socket.on('roll', async ({ roomId, userId }) => {
     console.log('ROLL RECEIVED:', { roomId, userId });
     const room = await Room.findOne({ roomId }).populate('player1 player2');
-    if (!room || room.status !== 'open') return;
+    if (!room || room.status !== 'active') return;
 
     // Validate turn
     if (room.currentPlayer.toString() !== userId) return;
