@@ -175,7 +175,12 @@ app.post('/api/rooms/:id/roll', authenticateToken, async (req, res) => {
     return res.json({ rollValue });
   }
   await room.save();
-  io.emit('rollResult', { roomId: room.roomId, player: req.user.userId, value: rollValue });
+  io.to(room.roomId).emit('rollResult', {
+    roomId: room.roomId,
+    player: req.user.userId,
+    value: rollValue,
+  });
+  console.log('rollResult emitted to room', room.roomId, 'with value', rollValue);
   res.json({ rollValue });
   console.log('ROLL RESULT EMITTED:', { roomId, player: userId, value: rollValue });
 });
