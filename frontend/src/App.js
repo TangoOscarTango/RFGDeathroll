@@ -434,9 +434,16 @@ const socket = useRef(null);
                   {gameState.rolls && gameState.rolls.map((roll, i) => (
                     <p key={i}>{roll.player && user._id ? (roll.player._id === user._id ? 'You' : roll.player.username) : 'Unknown'} rolled: {roll.value}</p>
                   ))}
-                  {gameState.status === 'active' && gameState.currentPlayer && user._id && gameState.currentPlayer._id === user._id && (
-                    <button onClick={roll} className="button">Roll</button>
-                  )}
+                  {gameState.status === 'active' && gameState.currentPlayer && user._id && (() => {
+                    console.log("DEBUG: user._id =", user._id);
+                    console.log("DEBUG: currentPlayer =", gameState.currentPlayer);
+                    console.log("DEBUG: currentPlayer._id === user._id ?", gameState.currentPlayer._id === user._id);
+                  
+                    return gameState.currentPlayer._id === user._id ? (
+                      <button onClick={handleRoll} className="button">Roll</button>
+                    ) : null;
+                  })()}
+
                   {gameState.status === 'closed' && gameState.winner && (
                     <div>
                       <p>Game Over! Winner: {gameState.winner === user._id ? 'You' : gameState.winner.username}</p>
