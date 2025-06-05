@@ -458,7 +458,18 @@ const socket = useRef(null);
                   {gameState.status === 'closed' && gameState.winner && (
                     <div>
                       <p>Game Over! Winner: {gameState.winner === user._id ? 'You' : gameState.winner.username}</p>
-                      <button onClick={() => setRoomId(null)} className="button">Back to Home</button>
+                      <button
+                        onClick={() => {
+                          if (roomId) socket.current.emit('end_game', { roomId });
+                          setIsPlaying(false);
+                          setRoomId(null);
+                          setGameState(null);
+                          setAuthStep('initial');
+                        }}
+                        className="button"
+                      >
+                        Back to Home
+                      </button>
                     </div>
                   )}
                 </>
