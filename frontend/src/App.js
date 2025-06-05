@@ -453,7 +453,8 @@ const socket = useRef(null);
                     return currentPlayerId === user._id ? (
                       <button onClick={handleRoll} className="button">Roll</button>
                     ) : null;
-                  })()}
+                  })()
+                )}
 
                   {gameState.status === 'closed' && gameState.winner && (
                     <div>
