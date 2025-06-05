@@ -145,6 +145,7 @@ app.post('/api/rooms/:id/join', authenticateToken, async (req, res) => {
   await user.save();
   room.player2 = req.user.userId;
   room.status = 'active';
+  room.currentPlayer = room.player1; // ✅ Set starting player
   await room.save();
   const populatedRoom = await Room.findOne({ roomId: req.params.id }).populate('player1 player2');
   io.emit('playerJoined', populatedRoom);
