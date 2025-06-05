@@ -415,7 +415,7 @@ const socket = useRef(null);
               <ul>
                 {rooms.map(room => (
                   <li key={room.roomId} className="room-item">
-                    Room {room.roomId} - Wager: {room.wager} FP - Status: {room.status} - Player 1: {room.player1.username}
+                    Room {room.roomId} - Wager: {room.wager} FP - Status: {room.status} - Player 1: {room.player1?.username ?? 'Unknown'} - Player 2: {room.player2?.username ?? 'Waiting...'}
                     {room.status === 'open' && (
                       <button onClick={() => joinRoom(room.roomId)} className="button join-button">Join</button>
                     )}
