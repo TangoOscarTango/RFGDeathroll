@@ -177,6 +177,7 @@ app.post('/api/rooms/:id/roll', authenticateToken, async (req, res) => {
   await room.save();
   io.emit('rollResult', { roomId: room.roomId, player: req.user.userId, value: rollValue });
   res.json({ rollValue });
+  console.log('ROLL RESULT EMITTED:', { roomId, player: userId, value: rollValue });
 });
 
 app.get('/api/rooms', async (req, res) => {
@@ -199,6 +200,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('roll', async ({ roomId, userId }) => {
+    console.log('ROLL RECEIVED:', { roomId, userId });
     const room = await Room.findOne({ roomId }).populate('player1 player2');
     if (!room || room.status !== 'open') return;
 
