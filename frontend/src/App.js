@@ -234,7 +234,7 @@ const App = () => {
         </div>
       ) : (
           <div className="w-full max-w-md bg-gray-800 p-6 rounded-lg shadow-lg">
-            <h2 className="text-2 mb-4 h2 text-gray-2">Room {currentRoom.roomId}</h2> {/* Changed _id to roomId */}
+            <h2 className="text-2xl mb-4">Room {currentRoom.roomId}</h2> {/* Changed _id to roomId */}
             <p>Current Max: {currentMax}</p>
             <p>Current Player: {currentPlayer === user._id ? 'You' : 'Opponent'}</p>
             <p>Status: {currentRoom.status}</p>
