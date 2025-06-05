@@ -321,8 +321,6 @@ const socket = useRef(null);
 
   return (
     <div className="container">
-    //{console.log("RENDER DEBUG: gameState =", gameState)}
-    //{console.log("RENDER DEBUG: user =", user)}
 
       <h1>Death Roll</h1>
       {!user ? (
