@@ -145,7 +145,7 @@ app.post('/api/rooms/:id/join', authenticateToken, async (req, res) => {
   await user.save();
   room.player2 = req.user.userId;
   room.status = 'active';
-  room.currentPlayer = room.player1; // ✅ Set starting player
+  room.currentPlayer = Math.random() < 0.5 ? room.player1 : req.user.userId; //randomly choose the current player
   await room.save();
   const populatedRoom = await Room.findOne({ roomId: req.params.id }).populate('player1 player2');
   io.emit('playerJoined', populatedRoom);
