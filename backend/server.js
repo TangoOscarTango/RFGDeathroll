@@ -24,14 +24,11 @@ app.use(cors({
 
 app.use(express.json());
 
-console.log('MONGO_URI:', process.env.MONGO_URI);
 mongoose.connect(process.env.MONGO_URI, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
-  serverSelectionTimeoutMS: 30000, // Increase to 30s
-  socketTimeoutMS: 45000, // Increase to 45s
 }).then(() => console.log('MongoDB connected'))
-  .catch(err => console.error('MongoDB connection error:', err));
+  .catch(err => console.log(err));
 
 const UserSchema = new mongoose.Schema({
   email: { type: String, required: true, unique: true },
@@ -194,10 +191,59 @@ app.post('/api/clear-rooms', async (req, res) => {
 
 io.on('connection', (socket) => {
   console.log('User connected:', socket.id);
-  socket.on('join', (userId) => {
-    console.log('Join signal received for userId:', userId);
-    socket.join(userId);
+
+  socket.on('join_room', async ({ roomId }) => {
+    socket.join(roomId);
+    console.log(`Socket ${socket.id} joined room ${roomId}`);
   });
+
+  socket.on('roll', async ({ roomId, userId }) => {
+    const room = await Room.findOne({ roomId }).populate('player1 player2');
+    if (!room || room.status !== 'open') return;
+
+    // Validate turn
+    if (room.currentPlayer.toString() !== userId) return;
+
+    // Roll the dice
+    const roll = Math.floor(Math.random() * room.currentMax) + 1;
+
+    // Update rolls
+    room.rolls.push({ player: userId, value: roll });
+    room.currentMax = roll;
+
+    // Check for game over
+    if (roll === 1) {
+      room.status = 'closed';
+      room.winner = room.player1._id.toString() === userId ? room.player2._id : room.player1._id;
+      await room.save();
+
+      io.to(roomId).emit('game_over', {
+        winner: room.winner,
+        loser: userId,
+        finalRoll: roll,
+        rolls: room.rolls
+      });
+      return;
+    }
+
+    // Switch turns
+    room.currentPlayer =
+      room.player1._id.toString() === userId ? room.player2._id : room.player1._id;
+
+    await room.save();
+
+    io.to(roomId).emit('room_update', {
+      roomId: room.roomId,
+      currentMax: room.currentMax,
+      currentPlayer: room.currentPlayer,
+      rolls: room.rolls
+    });
+  });
+
+  socket.on('end_game', ({ roomId }) => {
+    socket.leave(roomId);
+  });
+
   socket.on('disconnect', () => {
     console.log('User disconnected:', socket.id);
   });
