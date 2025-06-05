@@ -435,12 +435,12 @@ const socket = useRef(null);
                     <p key={i}>{roll.player && user._id ? (roll.player._id === user._id ? 'You' : roll.player.username) : 'Unknown'} rolled: {roll.value}</p>
                   ))}
                   {gameState.status === 'active' && gameState.currentPlayer && user._id && gameState.currentPlayer._id === user._id && (
-                    <button onClick={roll} className="button">Roll</button>
+                    <button onClick={handleRoll} className="button">Roll</button>
                   )}
                   {gameState.status === 'closed' && gameState.winner && (
                     <div>
                       <p>Game Over! Winner: {gameState.winner === user._id ? 'You' : gameState.winner.username}</p>
-                      <button onClick={() => setRoomId(null)} className="button">Back to Home</button>
+                      <button onClick={handleBackToHome} className="button">Back to Home</button>
                     </div>
                   )}
                 </>
