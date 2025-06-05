@@ -46,10 +46,15 @@ const socket = useRef(null);
   }, [roomId]);
 
   const handleRoll = () => {
+    console.log("ROLL BUTTON CLICKED");
     if (roomId && user?._id) {
+      console.log("Emitting 'roll' with", { roomId, userId: user._id });
       socket.current.emit('roll', { roomId, userId: user._id });
+    } else {
+      console.log("Roll failed: Missing roomId or user._id", { roomId, user });
     }
   };
+
 
   const handleBackToHome = () => {
     if (roomId) {
