@@ -440,20 +440,23 @@ const socket = useRef(null);
                   {gameState.rolls && gameState.rolls.map((roll, i) => (
                     <p key={i}>{roll.player && user._id ? (roll.player._id === user._id ? 'You' : roll.player.username) : 'Unknown'} rolled: {roll.value}</p>
                   ))}
-                  {gameState.status === 'active' && gameState.currentPlayer && user._id && (() => {
-                    const currentPlayerId = typeof gameState.currentPlayer === 'object'
-                      ? gameState.currentPlayer._id
-                      : gameState.currentPlayer; // If it's already a string/ObjectId
-                  
-                    //console.log("DEBUG: user._id =", user._id);
-                    //console.log("DEBUG: currentPlayer =", gameState.currentPlayer);
-                    //console.log("DEBUG: interpreted currentPlayerId =", currentPlayerId);
-                    //console.log("DEBUG: currentPlayerId === user._id ?", currentPlayerId === user._id);
-                  
-                    return currentPlayerId === user._id ? (
-                      <button onClick={handleRoll} className="button">Roll</button>
-                    ) : null;
-                  })()}
+                  {gameState.status === 'active' && gameState.currentPlayer && user._id && (
+                    (() => {
+                      const currentPlayerId = typeof gameState.currentPlayer === 'object'
+                        ? gameState.currentPlayer._id
+                        : gameState.currentPlayer;
+
+                        //console.log("DEBUG: user._id =", user._id);
+                        //console.log("DEBUG: currentPlayer =", gameState.currentPlayer);
+                        //console.log("DEBUG: interpreted currentPlayerId =", currentPlayerId);
+                        //console.log("DEBUG: currentPlayerId === user._id ?", currentPlayerId === user._id);
+                      
+                      return currentPlayerId === user._id ? (
+                        <button onClick={handleRoll} className="button">Roll</button>
+                      ) : null;
+                    })()
+                  )}
+
 
                   {gameState.status === 'closed' && gameState.winner && (
                     <div>
