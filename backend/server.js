@@ -129,6 +129,7 @@ app.post('/api/rooms', authenticateToken, async (req, res) => {
     player1: req.user.userId,
     wager,
     currentPlayer: req.user.userId,
+    currentMax: wager // Set initial currentMax to wager
   });
   await room.save();
   io.emit('roomCreated', room);
@@ -156,7 +157,11 @@ app.post('/api/rooms/:id/roll', authenticateToken, async (req, res) => {
   const room = await Room.findOne({ roomId: req.params.id }).populate('player1 player2');
   if (!room || room.status !== 'active') return res.status(400).json({ error: 'Room not active' });
   if (room.currentPlayer.toString() !== req.user.userId) return res.status(400).json({ error: 'Not your turn' });
-  const rollValue = Math.floor(Math.random() * room.currentMax) + 1;
+  
+  // Fix: Roll from 1 to currentMax - 1
+  const maxRoll = room.currentMax || room.wager; // Use wager as initial max if currentMax is unset
+  const rollValue = Math.floor(Math.random() * (maxRoll - 1)) + 1;
+  
   room.rolls.push({ player: req.user.userId, value: rollValue });
   room.currentMax = rollValue;
   room.currentPlayer = room.player1._id.toString() === req.user.userId ? room.player2._id : room.player1._id;
@@ -182,7 +187,7 @@ app.post('/api/rooms/:id/roll', authenticateToken, async (req, res) => {
   });
   console.log('rollResult emitted to room', room.roomId, 'with value', rollValue);
   res.json({ rollValue });
-  console.log('ROLL RESULT EMITTED:', { roomId, player: userId, value: rollValue });
+  console.log('ROLL RESULT EMITTED:', { roomId: req.params.id, player: req.user.userId, value: rollValue });
 });
 
 app.get('/api/rooms', async (req, res) => {
@@ -205,48 +210,49 @@ io.on('connection', (socket) => {
   });
 
   socket.on('roll', async ({ roomId, userId }) => {
-    console.log('ROLL RECEIVED:', { roomId, userId });
-    const room = await Room.findOne({ roomId }).populate('player1 player2');
-    if (!room || room.status !== 'active') return;
+  console.log('ROLL RECEIVED:', { roomId, userId });
+  const room = await Room.findOne({ roomId }).populate('player1 player2');
+  if (!room || room.status !== 'active') return;
 
-    // Validate turn
-    if (room.currentPlayer.toString() !== userId) return;
+  // Validate turn
+  if (room.currentPlayer.toString() !== userId) return;
 
-    // Roll the dice
-    const roll = Math.floor(Math.random() * room.currentMax) + 1;
+  // Fix: Roll from 1 to currentMax - 1
+  const maxRoll = room.currentMax || room.wager; // Use wager as initial max if currentMax is unset
+  const roll = Math.floor(Math.random() * (maxRoll - 1)) + 1;
 
-    // Update rolls
-    room.rolls.push({ player: userId, value: roll });
-    room.currentMax = roll;
+  // Update rolls
+  room.rolls.push({ player: userId, value: roll });
+  room.currentMax = roll;
 
-    // Check for game over
-    if (roll === 1) {
-      room.status = 'closed';
-      room.winner = room.player1._id.toString() === userId ? room.player2._id : room.player1._id;
-      await room.save();
-
-      io.to(roomId).emit('game_over', {
-        winner: room.winner,
-        loser: userId,
-        finalRoll: roll,
-        rolls: room.rolls
-      });
-      return;
-    }
-
-    // Switch turns
-    room.currentPlayer =
-      room.player1._id.toString() === userId ? room.player2._id : room.player1._id;
-
+  // Check for game over
+  if (roll === 1) {
+    room.status = 'closed';
+    room.winner = room.player1._id.toString() === userId ? room.player2._id : room.player1._id;
     await room.save();
 
-    io.to(roomId).emit('room_update', {
-      roomId: room.roomId,
-      currentMax: room.currentMax,
-      currentPlayer: room.currentPlayer,
+    io.to(roomId).emit('game_over', {
+      winner: room.winner,
+      loser: userId,
+      finalRoll: roll,
       rolls: room.rolls
     });
+    return;
+  }
+
+  // Switch turns
+  room.currentPlayer =
+    room.player1._id.toString() === userId ? room.player2._id : room.player1._id;
+
+  await room.save();
+
+  io.to(roomId).emit('room_update', {
+    roomId: room.roomId,
+    currentMax: room.currentMax,
+    currentPlayer: room.currentPlayer,
+    rolls: room.rolls
   });
+});
 
   socket.on('end_game', ({ roomId }) => {
     socket.leave(roomId);
