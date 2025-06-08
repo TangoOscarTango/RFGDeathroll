@@ -1,132 +1,117 @@
-// Handles profile image selection, border selection, username editing
-
 import React, { useState, useEffect } from 'react';
 import './ProfileModal.css';
-const blipSound = new Audio('/assets/sounds/blip.mp3');
-const saveSound = new Audio('/assets/sounds/save.mp3');
 
-const ProfileModal = ({ userData, setUserData, onClose }) => {
-  const [selectedPic, setSelectedPic] = useState(userData.profilePic);
-  const [selectedBorder, setSelectedBorder] = useState(userData.borderPic);
-  const [username, setUsername] = useState(userData.username);
-  const [editMode, setEditMode] = useState(false);
-  const [usernameChanged, setUsernameChanged] = useState(false);
-  const [isClosing, setIsClosing] = useState(false);
+const ProfileModal = ({ user, onClose, updateUser }) => {
+  if (!user) return null;
 
-  const handleClose = () => {
-    setIsClosing(true);
-    setTimeout(() => {
-      onClose();
-    }, 300); // match CSS fade duration
-  };
+  const [username, setUsername] = useState(user.username || '');
+  const [editUsername, setEditUsername] = useState(false);
+  const [selectedProfilePic, setSelectedProfilePic] = useState(user.profilePic ?? 0);
+  const [selectedBorderPic, setSelectedBorderPic] = useState(user.borderPic ?? 0);
+  const [showUsernameWarning, setShowUsernameWarning] = useState(false);
 
-  const handlePicClick = (index) => {
-    if (userData.unlockedProfilePics[index] === '1') {
-      playBlip();
-      setSelectedPic(index);
-    }
-  };
+  const unlockedProfilePics = user.unlockedProfilePics ?? '1000000'; // fallback: only first unlocked
+  const unlockedBorderPics = user.unlockedBorderPics ?? '100'; // fallback: only first unlocked
 
-  const handleBorderClick = (index) => {
-    if (userData.unlockedBorderPics[index] === '1') {
-      playBlip();
-      setSelectedBorder(index);
-    }
-  };
+  const blipSound = new Audio('/assets/sounds/blip.mp3');
+  const saveSound = new Audio('/assets/sounds/save.mp3');
 
-  const handleEditUsername = () => {
-    setEditMode(true);
-    alert('Changing your username will cost 50 Foxy Pesos when you click Save.');
-  };
+  useEffect(() => {
+    const playBlip = (e) => {
+      if (user.soundOn) blipSound.play().catch(() => {});
+    };
+    document.addEventListener('click', playBlip);
+    return () => document.removeEventListener('click', playBlip);
+  }, [user.soundOn]);
 
   const handleSave = async () => {
-    const payload = {
-      profilePic: selectedPic,
-      borderPic: selectedBorder,
-      username: username,
-      deductFoxyPesos: usernameChanged ? 50 : 0,
-    };
-
     try {
       const res = await fetch('/api/saveProfile', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${user.token}`,
+        },
+        body: JSON.stringify({
+          username,
+          profilePic: selectedProfilePic,
+          borderPic: selectedBorderPic,
+        }),
       });
-
-      if (res.ok) {
-        playSave();
-        const updated = await res.json();
-        setUserData(updated);
-        handleClose();
-      } else {
-        alert('Failed to save.');
-      }
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Error saving');
+      if (user.soundOn) saveSound.play().catch(() => {});
+      updateUser(data);
+      onClose();
     } catch (err) {
-      console.error(err);
-      alert('Error saving profile.');
+      console.error('Save failed:', err.message);
     }
   };
 
-  const playBlip = () => {
-    if (userData.soundOn) new Audio(blipSound).play();
-  };
-
-  const playSave = () => {
-    if (userData.soundOn) new Audio(saveSound).play();
-  };
-
   return (
-    <>
-      <div className={`modal-backdrop ${isClosing ? 'fade-out' : ''}`} onClick={handleClose}></div>
-      <div className={`profile-modal ${isClosing ? 'fade-out' : ''}`}>
+    <div className="profile-modal-backdrop" onClick={onClose}>
+      <div className="profile-modal" onClick={(e) => e.stopPropagation()}>
         <div className="profile-header">
           <input
+            type="text"
             value={username}
-            onChange={(e) => {
-              setUsername(e.target.value);
-              setUsernameChanged(true);
-            }}
-            disabled={!editMode}
-            className="username-input"
+            disabled={!editUsername}
+            onChange={(e) => setUsername(e.target.value)}
           />
-          <button onClick={handleEditUsername} className="edit-btn">Edit Username</button>
+          <button onClick={() => {
+            setEditUsername(true);
+            setShowUsernameWarning(true);
+          }}>
+            Edit Username
+          </button>
         </div>
+        {showUsernameWarning && (
+          <p className="warning-text">Changing your username will cost 50 Foxy Pesos when you click Save.</p>
+        )}
 
-        <div className="profile-selection">
-          <div className="pics">
-            <p>PROFILE PICS</p>
-            <div className="grid pics-grid">
-              {[...Array(7)].map((_, i) => (
-                <img
-                  key={i}
-                  src={`/assets/profile_pics/${i + 1}.png`}
-                  onClick={() => handlePicClick(i)}
-                  className={selectedPic === i ? 'selected' : ''}
-                  title={userData.unlockedProfilePics[i] === '1' ? '' : 'Unlock this by...'}
-                />
-              ))}
+        <div className="profile-options">
+          <div className="profile-column">
+            <h3>PROFILE PICS</h3>
+            <div className="grid">
+              {[...Array(7)].map((_, i) => {
+                const isUnlocked = unlockedProfilePics[i] === '1';
+                return (
+                  <div
+                    key={i}
+                    className={`pic-option ${selectedProfilePic === i ? 'selected' : ''} ${!isUnlocked ? 'locked' : ''}`}
+                    onClick={() => isUnlocked && setSelectedProfilePic(i)}
+                    title={!isUnlocked ? 'Unlock this profile pic by... [TODO]' : ''}
+                  >
+                    <img src={`/assets/profile_pics/${i + 1}.png`} alt={`Profile ${i + 1}`} />
+                  </div>
+                );
+              })}
             </div>
           </div>
-          <div className="borders">
-            <p>BORDER PICS</p>
-            <div className="grid borders-grid">
-              {[...Array(3)].map((_, i) => (
-                <img
-                  key={i}
-                  src={`/assets/border_pics/${i + 1}.png`}
-                  onClick={() => handleBorderClick(i)}
-                  className={selectedBorder === i ? 'selected' : ''}
-                  title={userData.unlockedBorderPics[i] === '1' ? '' : 'Unlock this by...'}
-                />
-              ))}
+
+          <div className="border-column">
+            <h3>BORDER PICS</h3>
+            <div className="grid">
+              {[...Array(3)].map((_, i) => {
+                const isUnlocked = unlockedBorderPics[i] === '1';
+                return (
+                  <div
+                    key={i}
+                    className={`pic-option ${selectedBorderPic === i ? 'selected' : ''} ${!isUnlocked ? 'locked' : ''}`}
+                    onClick={() => isUnlocked && setSelectedBorderPic(i)}
+                    title={!isUnlocked ? 'Unlock this border by... [TODO]' : ''}
+                  >
+                    <img src={`/assets/border_pics/${i + 1}.png`} alt={`Border ${i + 1}`} />
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>
 
-        <button className="save-btn" onClick={handleSave}>SAVE</button>
+        <button className="save-button" onClick={handleSave}>SAVE</button>
       </div>
-    </>
+    </div>
   );
 };
 
