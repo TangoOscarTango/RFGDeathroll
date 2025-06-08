@@ -267,188 +267,205 @@ const App = () => {
   };
 
   return (
-    <div className="container">
-      <h1>Death Roll</h1>
-      {!user ? (
-        <div className="auth-form">
-          {authStep === 'initial' && (
-            <>
+  <div className="container">
+    <h1>Death Roll</h1>
+    {!user ? (
+      <div className="auth-form">
+        {authStep === 'initial' && (
+          <>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="Email"
+              className="input"
+            />
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Password"
+              className="input"
+            />
+            <button onClick={checkCredentials} className="button">Submit</button>
+          </>
+        )}
+        {authStep === 'newUser' && (
+          <>
+            <input
+              type="text"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              placeholder="Username"
+              className="input"
+            />
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Password"
+              className="input"
+            />
+            <input
+              type="password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              placeholder="Confirm Password"
+              className="input"
+            />
+            <div className="button-group">
+              <button onClick={signup} className="button">Signup</button>
+              <button onClick={() => setAuthStep('initial')} className="button">Back</button>
+            </div>
+          </>
+        )}
+        {authStep === 'login' && (
+          <>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="Email"
+              className="input"
+            />
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Password"
+              className="input"
+            />
+            <button onClick={login} className="button">Login</button>
+          </>
+        )}
+        {errorMessage && <p className="error">{errorMessage}</p>}
+        <button
+          onClick={toggleAudio}
+          style={{
+            position: 'fixed',
+            bottom: '10px',
+            left: '10px',
+            width: '40px',
+            height: '40px',
+            background: 'transparent',
+            border: 'none',
+            cursor: 'pointer',
+            opacity: 0,
+            transition: 'opacity 0.3s',
+          }}
+          onMouseEnter={(e) => (e.target.style.opacity = 1)}
+          onMouseLeave={(e) => (e.target.style.opacity = 0)}
+        >
+          {isPlaying ? '🔇' : '🎵'}
+        </button>
+      </div>
+    ) : (
+      <div>
+        <p>Foxy Pesos: {user.foxyPesos} (Username: {user.username})</p>
+        {errorMessage && <p className="error">{errorMessage}</p>}
+        {!roomId ? (
+          <div>
+            <div className="room-form">
               <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="Email"
+                type="number"
+                value={wager}
+                onChange={(e) => setWager(e.target.value)}
+                placeholder="Wager (min 20 FP)"
                 className="input"
+                min="20"
               />
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Password"
-                className="input"
-              />
-              <button onClick={checkCredentials} className="button">Submit</button>
-            </>
-          )}
-          {authStep === 'newUser' && (
-            <>
-              <input
-                type="text"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                placeholder="Username"
-                className="input"
-              />
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Password"
-                className="input"
-              />
-              <input
-                type="password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="Confirm Password"
-                className="input"
-              />
-              <div className="button-group">
-                <button onClick={signup} className="button">Signup</button>
-                <button onClick={() => setAuthStep('initial')} className="button">Back</button>
-              </div>
-            </>
-          )}
-          {authStep === 'login' && (
-            <>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="Email"
-                className="input"
-              />
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Password"
-                className="input"
-              />
-              <button onClick={login} className="button">Login</button>
-            </>
-          )}
-          {errorMessage && <p className="error">{errorMessage}</p>}
-          <button onClick={toggleAudio} className="button">Toggle Music</button>
-        </div>
-      ) : (
-        <div>
-          <p>Foxy Pesos: {user.foxyPesos} (Username: {user.username})</p>
-          {errorMessage && <p className="error">{errorMessage}</p>}
-          {!roomId ? (
-            <div>
-              <div className="room-form">
-                <input
-                  type="number"
-                  value={wager}
-                  onChange={(e) => setWager(e.target.value)}
-                  placeholder="Wager (min 20 FP)"
-                  className="input"
-                  min="20"
-                />
-                <button onClick={() => { console.log('Create button clicked'); createRoom(); }} className="button">Create Room</button>
-              </div>
-              <h2>Open Rooms</h2>
-              <ul>
-                {rooms.map(room => (
-                  <li key={room.roomId} className="room-item">
-                    Room {room.roomId} - Wager: {room.wager} FP - Status: {room.status} - Player 1: {room.player1.username}
-                    {room.status === 'open' && (
-                      <button onClick={() => joinRoom(room.roomId)} className="button join-button">Join</button>
-                    )}
-                  </li>
+              <button onClick={() => { console.log('Create button clicked'); createRoom(); }} className="button">Create Room</button>
+            </div>
+            <h2>Open Rooms</h2>
+            <ul>
+              {rooms.map(room => (
+                <li key={room.roomId} className="room-item">
+                  Room {room.roomId} - Wager: {room.wager} FP - Status: {room.status} - Player 1: {room.player1.username}
+                  {room.status === 'open' && (
+                    <button onClick={() => joinRoom(room.roomId)} className="button join-button">Join</button>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : (
+          <div>
+            <h2>Room {roomId}</h2>
+            {gameState && (
+              <div>
+                <p>Status: {gameState.status}</p>
+                <p>Current Max: {gameState.currentMax || 'N/A'}</p>
+                <p>Current Player: {gameState.currentPlayer && user._id ? (gameState.currentPlayer._id === user._id ? 'You' : gameState.currentPlayer.username) : 'N/A'}</p>
+                {gameState.rolls && gameState.rolls.map((roll, i) => (
+                  <p key={i}>{roll.player && user._id ? (roll.player._id === user._id ? 'You' : roll.player.username) : 'Unknown'} rolled: {roll.value}</p>
                 ))}
-              </ul>
-            </div>
-          ) : (
-            <div>
-              <h2>Room {roomId}</h2>
-              {gameState && (
-                <div>
-                  <p>Status: {gameState.status}</p>
-                  <p>Current Max: {gameState.currentMax || 'N/A'}</p>
-                  <p>Current Player: {gameState.currentPlayer && user._id ? (gameState.currentPlayer._id === user._id ? 'You' : gameState.currentPlayer.username) : 'N/A'}</p>
-                  {gameState.rolls && gameState.rolls.map((roll, i) => (
-                    <p key={i}>{roll.player && user._id ? (roll.player._id === user._id ? 'You' : roll.player.username) : 'Unknown'} rolled: {roll.value}</p>
-                  ))}
-                  {gameState.status === 'active' && gameState.currentPlayer && user._id && (
-                    (() => {
-                      const currentPlayerId = typeof gameState.currentPlayer === 'object'
-                        ? gameState.currentPlayer._id
-                        : gameState.currentPlayer;
-                      return currentPlayerId === user._id ? (
-                        <button onClick={handleRoll} className="button">Roll</button>
-                      ) : null;
-                    })()
-                  )}
-                  {gameState.status === 'closed' && gameState.winner && (
-                    <div>
-                      <p>
-                        Game Over! Winner: {gameState.winner === user._id
-                          ? 'You'
-                          : (typeof gameState.winner === 'object' ? gameState.winner.username : 'Opponent')}
-                      </p>
-                      <button onClick={handleBackToHome} className="button">
-                        Back to Home
-                      </button>
-                    </div>
-                  )}
-                </div>
-              )}
-              <button
-                onClick={clearRooms}
-                style={{
-                  position: 'fixed',
-                  bottom: '10px',
-                  right: '10px',
-                  width: '40px',
-                  height: '40px',
-                  background: 'transparent',
-                  border: 'none',
-                  cursor: 'pointer',
-                  opacity: 0,
-                  transition: 'opacity 0.3s',
-                }}
-                onMouseEnter={(e) => (e.target.style.opacity = 1)}
-                onMouseLeave={(e) => (e.target.style.opacity = 0)}
-              >
-                Clear Rooms
-              </button>
-              <button
-                onClick={toggleAudio}
-                style={{
-                  position: 'fixed',
-                  bottom: '10px',
-                  left: '10px',
-                  width: '40px',
-                  height: '40px',
-                  background: 'transparent',
-                  border: 'none',
-                  cursor: 'pointer',
-                  opacity: 0,
-                  transition: 'opacity 0.3s',
-                }}
-                onMouseEnter={(e) => (e.target.style.opacity = 1)}
-                onMouseLeave={(e) => (e.target.style.opacity = 0)}
-              >
-                {isPlaying ? '🔇' : '🎵'}
-              </button>
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
-};
+                {gameState.status === 'active' && gameState.currentPlayer && user._id && (
+                  (() => {
+                    const currentPlayerId = typeof gameState.currentPlayer === 'object'
+                      ? gameState.currentPlayer._id
+                      : gameState.currentPlayer;
+                    return currentPlayerId === user._id ? (
+                      <button onClick={handleRoll} className="button">Roll</button>
+                    ) : null;
+                  })()
+                )}
+                {gameState.status === 'closed' && gameState.winner && (
+                  <div>
+                    <p>
+                      Game Over! Winner: {gameState.winner === user._id
+                        ? 'You'
+                        : (typeof gameState.winner === 'object' ? gameState.winner.username : 'Opponent')}
+                    </p>
+                    <button onClick={handleBackToHome} className="button">
+                      Back to Home
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+            <button
+              onClick={clearRooms}
+              style={{
+                position: 'fixed',
+                bottom: '10px',
+                right: '10px',
+                width: '40px',
+                height: '40px',
+                background: 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+                opacity: 0,
+                transition: 'opacity 0.3s',
+              }}
+              onMouseEnter={(e) => (e.target.style.opacity = 1)}
+              onMouseLeave={(e) => (e.target.style.opacity = 0)}
+            >
+              Clear Rooms
+            </button>
+            <button
+              onClick={toggleAudio}
+              style={{
+                position: 'fixed',
+                bottom: '10px',
+                left: '10px',
+                width: '40px',
+                height: '40px',
+                background: 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+                opacity: 0,
+                transition: 'opacity 0.3s',
+              }}
+              onMouseEnter={(e) => (e.target.style.opacity = 1)}
+              onMouseLeave={(e) => (e.target.style.opacity = 0)}
+            >
+              {isPlaying ? '🔇' : '🎵'}
+            </button>
+          </div>
+        )}
+      </div>
+    )}
+  </div>
+);
 
 export default App;
