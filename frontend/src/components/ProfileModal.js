@@ -78,14 +78,15 @@ const ProfileModal = ({ userData, setUserData, onClose }) => {
             setUsernameChanged(true);
           }}
           disabled={!editMode}
+          className="username-input"
         />
-        <button onClick={handleEditUsername}>Edit Username</button>
+        <button onClick={handleEditUsername} className="edit-btn">Edit Username</button>
       </div>
 
       <div className="profile-selection">
         <div className="pics">
           <p>PROFILE PICS</p>
-          <div className="grid">
+          <div className="grid pics-grid">
             {[...Array(7)].map((_, i) => (
               <img
                 key={i}
@@ -99,7 +100,7 @@ const ProfileModal = ({ userData, setUserData, onClose }) => {
         </div>
         <div className="borders">
           <p>BORDER PICS</p>
-          <div className="grid">
+          <div className="grid borders-grid">
             {[...Array(3)].map((_, i) => (
               <img
                 key={i}
