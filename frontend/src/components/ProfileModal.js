@@ -2,27 +2,27 @@ import React, { useState, useEffect } from 'react';
 import './ProfileModal.css';
 
 const ProfileModal = ({ user, onClose, updateUser }) => {
-  if (!user) return null;
-
-  const [username, setUsername] = useState(user.username || '');
+  const [username, setUsername] = useState(user?.username || '');
   const [editUsername, setEditUsername] = useState(false);
-  const [selectedProfilePic, setSelectedProfilePic] = useState(user.profilePic ?? 0);
-  const [selectedBorderPic, setSelectedBorderPic] = useState(user.borderPic ?? 0);
+  const [selectedProfilePic, setSelectedProfilePic] = useState(user?.profilePic ?? 0);
+  const [selectedBorderPic, setSelectedBorderPic] = useState(user?.borderPic ?? 0);
   const [showUsernameWarning, setShowUsernameWarning] = useState(false);
 
-  const unlockedProfilePics = user.unlockedProfilePics ?? '1000000'; // fallback: only first unlocked
-  const unlockedBorderPics = user.unlockedBorderPics ?? '100'; // fallback: only first unlocked
+  const unlockedProfilePics = user?.unlockedProfilePics ?? '1000000';
+  const unlockedBorderPics = user?.unlockedBorderPics ?? '100';
 
   const blipSound = new Audio('/assets/sounds/blip.mp3');
   const saveSound = new Audio('/assets/sounds/save.mp3');
 
   useEffect(() => {
-    const playBlip = (e) => {
-      if (user.soundOn) blipSound.play().catch(() => {});
-    };
+    if (!user?.soundOn) return;
+    const playBlip = (e) => blipSound.play().catch(() => {});
     document.addEventListener('click', playBlip);
     return () => document.removeEventListener('click', playBlip);
-  }, [user.soundOn]);
+  }, [user?.soundOn]);
+
+  // ✅ Safe early return after all hooks
+  if (!user) return null;
 
   const handleSave = async () => {
     try {
