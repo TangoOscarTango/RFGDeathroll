@@ -1,122 +1,88 @@
-// Handles profile image selection, border selection, username editing
+.profile-modal {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: #222;
+  color: white;
+  padding: 20px;
+  border-radius: 12px;
+  z-index: 1000;
+  width: 80vw;
+  max-width: 900px;
+  box-shadow: 0 0 20px rgba(0,0,0,0.5);
+  font-family: sans-serif;
+}
 
-import React, { useState, useEffect } from 'react';
-import './ProfileModal.css'; // You'll style spacing here
-import blipSound from '../assets/sounds/blip.mp3';
-import saveSound from '../assets/sounds/save.mp3';
+.profile-header {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  margin-bottom: 20px;
+}
 
-const ProfileModal = ({ userData, setUserData, onClose }) => {
-  const [selectedPic, setSelectedPic] = useState(userData.profilePic);
-  const [selectedBorder, setSelectedBorder] = useState(userData.borderPic);
-  const [username, setUsername] = useState(userData.username);
-  const [editMode, setEditMode] = useState(false);
-  const [usernameChanged, setUsernameChanged] = useState(false);
+.username-input {
+  font-size: 1.2em;
+  padding: 6px 10px;
+  margin-right: 10px;
+  border: none;
+  border-radius: 4px;
+  background: #444;
+  color: white;
+  width: 250px;
+}
 
-  const handlePicClick = (index) => {
-    if (userData.unlockedProfilePics[index] === '1') {
-      playBlip();
-      setSelectedPic(index);
-    }
-  };
+.edit-btn, .save-btn {
+  padding: 8px 16px;
+  font-size: 1em;
+  background: #ffcc00;
+  color: black;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
 
-  const handleBorderClick = (index) => {
-    if (userData.unlockedBorderPics[index] === '1') {
-      playBlip();
-      setSelectedBorder(index);
-    }
-  };
+.edit-btn:hover, .save-btn:hover {
+  background: #ffdb4d;
+}
 
-  const handleEditUsername = () => {
-    setEditMode(true);
-    alert('Changing your username will cost 50 Foxy Pesos when you click Save.');
-  };
+.profile-selection {
+  display: flex;
+  gap: 40px;
+  justify-content: space-between;
+}
 
-  const handleSave = async () => {
-    const payload = {
-      profilePic: selectedPic,
-      borderPic: selectedBorder,
-      username: username,
-      deductFoxyPesos: usernameChanged ? 50 : 0,
-    };
+.grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 10px;
+}
 
-    try {
-      const res = await fetch('/api/saveProfile', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
+.grid img {
+  width: 64px;
+  height: 64px;
+  border: 2px solid transparent;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: transform 0.1s ease, border 0.2s ease;
+}
 
-      if (res.ok) {
-        playSave();
-        const updated = await res.json();
-        setUserData(updated);
-        onClose();
-      } else {
-        alert('Failed to save.');
-      }
-    } catch (err) {
-      console.error(err);
-      alert('Error saving profile.');
-    }
-  };
+.grid img:hover {
+  transform: scale(1.05);
+}
 
-  const playBlip = () => {
-    if (userData.soundOn) new Audio(blipSound).play();
-  };
+.grid img.selected {
+  border: 2px solid #00ffcc;
+}
 
-  const playSave = () => {
-    if (userData.soundOn) new Audio(saveSound).play();
-  };
+.save-btn {
+  display: block;
+  margin: 30px auto 0;
+  background: #00cc88;
+}
 
-  return (
-    <div className="profile-modal">
-      <div className="profile-header">
-        <input
-          value={username}
-          onChange={(e) => {
-            setUsername(e.target.value);
-            setUsernameChanged(true);
-          }}
-          disabled={!editMode}
-          className="username-input"
-        />
-        <button onClick={handleEditUsername} className="edit-btn">Edit Username</button>
-      </div>
-
-      <div className="profile-selection">
-        <div className="pics">
-          <p>PROFILE PICS</p>
-          <div className="grid pics-grid">
-            {[...Array(7)].map((_, i) => (
-              <img
-                key={i}
-                src={`/assets/profile_pics/${i + 1}.png`}
-                onClick={() => handlePicClick(i)}
-                className={selectedPic === i ? 'selected' : ''}
-                title={userData.unlockedProfilePics[i] === '1' ? '' : 'Unlock this by...'}
-              />
-            ))}
-          </div>
-        </div>
-        <div className="borders">
-          <p>BORDER PICS</p>
-          <div className="grid borders-grid">
-            {[...Array(3)].map((_, i) => (
-              <img
-                key={i}
-                src={`/assets/border_pics/${i + 1}.png`}
-                onClick={() => handleBorderClick(i)}
-                className={selectedBorder === i ? 'selected' : ''}
-                title={userData.unlockedBorderPics[i] === '1' ? '' : 'Unlock this by...'}
-              />
-            ))}
-          </div>
-        </div>
-      </div>
-
-      <button className="save-btn" onClick={handleSave}>SAVE</button>
-    </div>
-  );
-};
-
-export default ProfileModal;
+.save-btn:hover {
+  background: #00e6a8;
+}
