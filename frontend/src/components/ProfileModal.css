@@ -9,6 +9,32 @@
   }
 }
 
+@keyframes fadeOut {
+  from {
+    opacity: 1;
+    transform: translate(-50%, -50%);
+  }
+  to {
+    opacity: 0;
+    transform: translate(-50%, -45%);
+  }
+}
+
+.modal-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.6);
+  z-index: 999;
+  animation: fadeIn 0.3s ease-out;
+}
+
+.modal-backdrop.fade-out {
+  animation: fadeOut 0.3s ease-out forwards;
+}
+
 .profile-modal {
   position: fixed;
   top: 50%;
@@ -24,6 +50,10 @@
   box-shadow: 0 0 20px rgba(0,0,0,0.5);
   font-family: sans-serif;
   animation: fadeIn 0.3s ease-out;
+}
+
+.profile-modal.fade-out {
+  animation: fadeOut 0.3s ease-out forwards;
 }
 
 .profile-header {
