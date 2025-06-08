@@ -2,8 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import './ProfileModal.css';
-import blipSound from '../assets/sounds/blip.mp3';
-import saveSound from '../assets/sounds/save.mp3';
+const blipSound = new Audio('/assets/sounds/blip.mp3');
+const saveSound = new Audio('/assets/sounds/save.mp3');
 
 const ProfileModal = ({ userData, setUserData, onClose }) => {
   const [selectedPic, setSelectedPic] = useState(userData.profilePic);
