@@ -264,4 +264,6 @@ io.on('connection', (socket) => {
 });
 
 const PORT = process.env.PORT || 3001;
+const profileRoutes = require('./routes/profile');
+app.use('/api', profileRoutes);
 server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
