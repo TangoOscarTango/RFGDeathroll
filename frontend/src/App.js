@@ -3,6 +3,7 @@ import axios from 'axios';
 import io from 'socket.io-client';
 import jwtDecode from 'jwt-decode';
 import './App.css';
+import ProfileModal from './components/ProfileModal';
 
 const App = () => {
   const [user, setUser] = useState(null);
@@ -18,6 +19,7 @@ const App = () => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [authStep, setAuthStep] = useState('initial');
   const [TESTING, setTESTING] = useState(true); // TESTING toggle set to true
+  const [showProfileModal, setShowProfileModal] = useState(false);
   const audioRef = useRef(null);
 
   const socket = useRef(null);
@@ -344,6 +346,7 @@ const App = () => {
       ) : (
         <div>
           <p>Foxy Pesos: {user.foxyPesos} (Username: {user.username})</p>
+          <button className="button" onClick={() => setShowProfileModal(true)}>Edit Profile</button>
           {errorMessage && <p className="error">{errorMessage}</p>}
           {!roomId ? (
             <div>
@@ -452,6 +455,13 @@ const App = () => {
             </button>
           )}
         </div>
+      )}
+      {showProfileModal && (
+        <ProfileModal
+          user={user}
+          onClose={() => setShowProfileModal(false)}
+          updateUser={(updated) => setUser((prev) => ({ ...prev, ...updated }))}
+        />
       )}
     </div>
   );
