@@ -139,7 +139,7 @@ const App = () => {
       const response = await axios.post(`${process.env.REACT_APP_API_URL}/api/signup`, { email, password, username });
       console.log('Signup response received:', response.data);
       const decoded = jwtDecode(response.data.token);
-      setUser({ token: response.data.token, foxyPesos: response.data.foxyPesos, _id: decoded.userId, username });
+      setUser({ token: response.data.token, _id: decoded.userId, username, foxyPesos: 1000, profilePic: 0, borderPic: 0, unlockedProfilePics: '1000000', unlockedBorderPics: '100', soundOn: true, musicOn: true, });
       axios.defaults.headers.common['Authorization'] = `Bearer ${response.data.token}`;
       if (!isPlaying) toggleAudio();
       setAuthStep('initial');
@@ -165,7 +165,7 @@ const App = () => {
       const userData = await axios.get(`${process.env.REACT_APP_API_URL}/api/user`, {
         headers: { Authorization: `Bearer ${response.data.token}` }
       });
-      setUser({ token: response.data.token, foxyPesos: response.data.foxyPesos, _id: decoded.userId, username: userData.data.username });
+      setUser({ token: response.data.token, _id: decoded.userId, username: userData.data.username, foxyPesos: userData.data.foxyPesos, profilePic: userData.data.profilePic, borderPic: userData.data.borderPic, unlockedProfilePics: userData.data.unlockedProfilePics, unlockedBorderPics: userData.data.unlockedBorderPics, soundOn: userData.data.soundOn, musicOn: userData.data.musicOn, });
       axios.defaults.headers.common['Authorization'] = `Bearer ${response.data.token}`;
       if (!isPlaying) toggleAudio();
       setAuthStep('initial');
