@@ -38,7 +38,7 @@ const ProfileModal = ({ user, onClose, updateUser }) => {
           borderPic: selectedBorderPic,
         }),
       });
-      const data = await res.json();
+      let data = {}; try {   data = await res.json(); } catch (err) {   console.warn('No JSON body returned'); }
       if (!res.ok) throw new Error(data.error || 'Error saving');
       if (user.soundOn) saveSound.play().catch(() => {});
       updateUser(data);
