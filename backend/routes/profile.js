@@ -23,7 +23,7 @@ router.post('/saveProfile', async (req, res) => {
   }
 
   try {
-    const user = await User.findById(userData.id);
+    const user = await User.findById(userData.userId);
     if (!user) return res.status(404).json({ message: 'User not found' });
 
     // If changing username, check if it's already taken (optional)
