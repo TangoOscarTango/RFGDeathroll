@@ -26,7 +26,7 @@ const ProfileModal = ({ user, onClose, updateUser }) => {
 
   const handleSave = async () => {
   try {
-    const res = await fetch('/api/saveProfile', {
+    const res = await fetch(`${process.env.REACT_APP_API_URL}/api/saveProfile`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
