@@ -1,7 +1,7 @@
 // Handles profile image selection, border selection, username editing
 
 import React, { useState, useEffect } from 'react';
-import './ProfileModal.css'; // You'll style spacing here
+import './ProfileModal.css';
 import blipSound from '../assets/sounds/blip.mp3';
 import saveSound from '../assets/sounds/save.mp3';
 
@@ -11,6 +11,14 @@ const ProfileModal = ({ userData, setUserData, onClose }) => {
   const [username, setUsername] = useState(userData.username);
   const [editMode, setEditMode] = useState(false);
   const [usernameChanged, setUsernameChanged] = useState(false);
+  const [isClosing, setIsClosing] = useState(false);
+
+  const handleClose = () => {
+    setIsClosing(true);
+    setTimeout(() => {
+      onClose();
+    }, 300); // match CSS fade duration
+  };
 
   const handlePicClick = (index) => {
     if (userData.unlockedProfilePics[index] === '1') {
@@ -50,7 +58,7 @@ const ProfileModal = ({ userData, setUserData, onClose }) => {
         playSave();
         const updated = await res.json();
         setUserData(updated);
-        onClose();
+        handleClose();
       } else {
         alert('Failed to save.');
       }
@@ -69,53 +77,56 @@ const ProfileModal = ({ userData, setUserData, onClose }) => {
   };
 
   return (
-    <div className="profile-modal">
-      <div className="profile-header">
-        <input
-          value={username}
-          onChange={(e) => {
-            setUsername(e.target.value);
-            setUsernameChanged(true);
-          }}
-          disabled={!editMode}
-          className="username-input"
-        />
-        <button onClick={handleEditUsername} className="edit-btn">Edit Username</button>
-      </div>
+    <>
+      <div className={`modal-backdrop ${isClosing ? 'fade-out' : ''}`} onClick={handleClose}></div>
+      <div className={`profile-modal ${isClosing ? 'fade-out' : ''}`}>
+        <div className="profile-header">
+          <input
+            value={username}
+            onChange={(e) => {
+              setUsername(e.target.value);
+              setUsernameChanged(true);
+            }}
+            disabled={!editMode}
+            className="username-input"
+          />
+          <button onClick={handleEditUsername} className="edit-btn">Edit Username</button>
+        </div>
 
-      <div className="profile-selection">
-        <div className="pics">
-          <p>PROFILE PICS</p>
-          <div className="grid pics-grid">
-            {[...Array(7)].map((_, i) => (
-              <img
-                key={i}
-                src={`/assets/profile_pics/${i + 1}.png`}
-                onClick={() => handlePicClick(i)}
-                className={selectedPic === i ? 'selected' : ''}
-                title={userData.unlockedProfilePics[i] === '1' ? '' : 'Unlock this by...'}
-              />
-            ))}
+        <div className="profile-selection">
+          <div className="pics">
+            <p>PROFILE PICS</p>
+            <div className="grid pics-grid">
+              {[...Array(7)].map((_, i) => (
+                <img
+                  key={i}
+                  src={`/assets/profile_pics/${i + 1}.png`}
+                  onClick={() => handlePicClick(i)}
+                  className={selectedPic === i ? 'selected' : ''}
+                  title={userData.unlockedProfilePics[i] === '1' ? '' : 'Unlock this by...'}
+                />
+              ))}
+            </div>
+          </div>
+          <div className="borders">
+            <p>BORDER PICS</p>
+            <div className="grid borders-grid">
+              {[...Array(3)].map((_, i) => (
+                <img
+                  key={i}
+                  src={`/assets/border_pics/${i + 1}.png`}
+                  onClick={() => handleBorderClick(i)}
+                  className={selectedBorder === i ? 'selected' : ''}
+                  title={userData.unlockedBorderPics[i] === '1' ? '' : 'Unlock this by...'}
+                />
+              ))}
+            </div>
           </div>
         </div>
-        <div className="borders">
-          <p>BORDER PICS</p>
-          <div className="grid borders-grid">
-            {[...Array(3)].map((_, i) => (
-              <img
-                key={i}
-                src={`/assets/border_pics/${i + 1}.png`}
-                onClick={() => handleBorderClick(i)}
-                className={selectedBorder === i ? 'selected' : ''}
-                title={userData.unlockedBorderPics[i] === '1' ? '' : 'Unlock this by...'}
-              />
-            ))}
-          </div>
-        </div>
-      </div>
 
-      <button className="save-btn" onClick={handleSave}>SAVE</button>
-    </div>
+        <button className="save-btn" onClick={handleSave}>SAVE</button>
+      </div>
+    </>
   );
 };
 
