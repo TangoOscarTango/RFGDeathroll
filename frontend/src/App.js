@@ -417,7 +417,7 @@ const App = () => {
               width: '120px', // 3x the original 40px
               height: '120px', // 3x the original 40px
               background: 'linear-gradient(45deg, red, orange, yellow, green, blue, indigo, violet, red)', // Rainbow circle
-              borderRadius: '50%', // Circular shape
+              borderRadius: '25%', // Circular shape
               border: 'none',
               cursor: 'pointer',
               color: 'white',
@@ -428,7 +428,7 @@ const App = () => {
             }}
           >
             {isPlaying ? '🔇' : '🎵'}
-          </button>
+          </button>1
           {/* Clear Rooms button, visible only if TESTING is true */}
           {TESTING && (
             <button
