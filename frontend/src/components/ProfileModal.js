@@ -25,28 +25,39 @@ const ProfileModal = ({ user, onClose, updateUser }) => {
   if (!user) return null;
 
   const handleSave = async () => {
+  try {
+    const res = await fetch('/api/saveProfile', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${user.token}`,
+      },
+      body: JSON.stringify({
+        username,
+        profilePic: selectedProfilePic,
+        borderPic: selectedBorderPic,
+      }),
+    });
+
+    let data = {};
     try {
-      const res = await fetch('/api/saveProfile', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${user.token}`,
-        },
-        body: JSON.stringify({
-          username,
-          profilePic: selectedProfilePic,
-          borderPic: selectedBorderPic,
-        }),
-      });
-      let data = {}; try {   data = await res.json(); } catch (err) {   console.warn('No JSON body returned'); }
-      if (!res.ok) throw new Error(data.error || 'Error saving');
-      if (user.soundOn) saveSound.play().catch(() => {});
-      updateUser(data);
-      onClose();
+      data = await res.json();
     } catch (err) {
-      console.error('Save failed:', err.message);
+      console.warn('Response had no JSON body');
     }
-  };
+
+    if (!res.ok) {
+      throw new Error(data?.error || 'Save failed');
+    }
+
+    if (user.soundOn) saveSound.play().catch(() => {});
+    updateUser(data);
+    onClose();
+
+  } catch (err) {
+    console.error('Save failed:', err.message);
+  }
+};
 
   return (
     <div className="profile-modal-backdrop" onClick={onClose}>
