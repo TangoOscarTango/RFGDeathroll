@@ -11,15 +11,15 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: 'https://rfgdeathroll-frontend.onrender.com', // Explicitly allow frontend origin
+    origin: 'https://rfgdeathroll-frontend.onrender.com',
     methods: ['GET', 'POST'],
   },
 });
 
 app.use(cors({
-  origin: 'https://rfgdeathroll-frontend.onrender.com', // Ensure CORS middleware matches
+  origin: 'https://rfgdeathroll-frontend.onrender.com',
   methods: ['GET', 'POST'],
-  credentials: true, // Allow credentials if needed
+  credentials: true,
 }));
 
 app.use(express.json());
@@ -30,14 +30,7 @@ mongoose.connect(process.env.MONGODB_URI, {
 }).then(() => console.log('MongoDB connected'))
   .catch(err => console.log(err));
 
-const UserSchema = new mongoose.Schema({
-  email: { type: String, required: true, unique: true },
-  password: { type: String, required: true },
-  username: { type: String, required: true, unique: true },
-  foxyPesos: { type: Number, default: 1000 },
-});
-const User = mongoose.model('User', UserSchema);
-
+const User = require('./models/User');
 const RoomSchema = new mongoose.Schema({
   roomId: { type: String, required: true, unique: true },
   player1: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
@@ -263,7 +256,8 @@ io.on('connection', (socket) => {
   });
 });
 
-const PORT = process.env.PORT || 3001;
 const profileRoutes = require('./routes/profile');
 app.use('/api', profileRoutes);
+
+const PORT = process.env.PORT || 3001;
 server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
