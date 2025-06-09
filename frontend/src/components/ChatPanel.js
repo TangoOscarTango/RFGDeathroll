@@ -53,9 +53,13 @@ const sendMessage = () => {
           <div className="chat-messages">
             {globalMessages.map((msg, idx) => (
               <div key={idx} className={`chat-message ${msg.senderId === user._id ? 'own' : ''}`}>
-                <strong>{msg.senderUsername || 'User'}:</strong> {msg.content}
+                <strong style={{ color: msg.chatColor || 'black' }}>
+                  {msg.senderUsername || 'User'}:
+                </strong>{' '}
+                {msg.content}
               </div>
             ))}
+
             <div ref={messagesEndRef} />
           </div>
           <div className="chat-input">
