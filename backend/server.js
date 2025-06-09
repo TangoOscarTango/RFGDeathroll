@@ -201,7 +201,7 @@ app.post('/api/clear-rooms', async (req, res) => {
 io.use(socketAuth);
 
 io.on('connection', async (socket) => {
-  const userId = socket.user.id;
+  const userId = socket.user.userId;
 
   // Mark user online
   await User.findByIdAndUpdate(userId, { online: true });
