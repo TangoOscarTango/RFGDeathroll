@@ -198,13 +198,52 @@ app.post('/api/clear-rooms', async (req, res) => {
   res.json({ message: 'Rooms cleared' });
 });
 
-io.on('connection', (socket) => {
-  console.log('User connected:', socket.id);
+io.use(socketAuth);
 
-  socket.on('join_room', async ({ roomId }) => {
-    socket.join(roomId);
-    console.log(`Socket ${socket.id} joined room ${roomId}`);
+io.on('connection', async (socket) => {
+  const userId = socket.user.id;
+
+  // Mark user online
+  await User.findByIdAndUpdate(userId, { online: true });
+
+  // Join rooms
+  socket.join('globalChat');
+  socket.join(`user:${userId}`);
+
+  // Global message
+  socket.on('globalMessage', async (data) => {
+    const msg = new Message({ sender: userId, content: data.content });
+    await msg.save();
+    io.to('globalChat').emit('globalMessage', {
+      ...data,
+      senderId: userId,
+      timestamp: msg.timestamp
+    });
   });
+
+  // Private message
+  socket.on('privateMessage', async ({ to, content, contentType }) => {
+    const msg = new Message({ sender: userId, receiver: to, content, contentType });
+    await msg.save();
+    const room = [`user:${userId}`, `user:${to}`].sort().join(':');
+    io.to(`user:${to}`).emit('privateMessage', {
+      from: userId,
+      content,
+      contentType,
+      timestamp: msg.timestamp
+    });
+  });
+
+  // Typing indicator
+  socket.on('typing', ({ to, isTyping }) => {
+    io.to(`user:${to}`).emit('typing', { from: userId, isTyping });
+  });
+
+  // Disconnect
+  socket.on('disconnect', async () => {
+    await User.findByIdAndUpdate(userId, { online: false });
+  });
+});
 
   socket.on('roll', async ({ roomId, userId }) => {
   console.log('ROLL RECEIVED:', { roomId, userId });
@@ -255,13 +294,10 @@ io.on('connection', (socket) => {
     socket.leave(roomId);
   });
 
-  socket.on('disconnect', () => {
-    console.log('User disconnected:', socket.id);
-  });
-});
-
 const profileRoutes = require('./routes/profile');
 app.use('/api', profileRoutes);
+const chatRoutes = require('./routes/chat');
+app.use('/api/chat', chatRoutes);
 
 const PORT = process.env.PORT || 3001;
 server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
