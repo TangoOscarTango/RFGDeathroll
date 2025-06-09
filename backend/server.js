@@ -243,6 +243,46 @@ io.on('connection', async (socket) => {
     io.to(`user:${to}`).emit('typing', { from: userId, isTyping });
   });
 
+  // Rolling the Dice
+  socket.on('roll', async ({ roomId, userId }) => {
+  console.log('ROLL RECEIVED:', { roomId, userId });
+
+  const room = await Room.findOne({ roomId }).populate('player1 player2');
+  if (!room || room.status !== 'active') return;
+
+  if (room.currentPlayer.toString() !== userId) return;
+
+  const maxRoll = room.currentMax || room.wager;
+  const roll = Math.floor(Math.random() * (maxRoll - 1)) + 1;
+
+  room.rolls.push({ player: userId, value: roll });
+  room.currentMax = roll;
+
+  if (roll === 1) {
+    room.status = 'closed';
+    room.winner = room.player1._id.toString() === userId ? room.player2._id : room.player1._id;
+    await room.save();
+
+    io.to(roomId).emit('game_over', {
+      winner: room.winner,
+      loser: userId,
+      finalRoll: roll,
+      rolls: room.rolls
+    });
+    return;
+  }
+
+  room.currentPlayer = room.player1._id.toString() === userId ? room.player2._id : room.player1._id;
+  await room.save();
+
+  io.to(roomId).emit('room_update', {
+    roomId: room.roomId,
+    currentMax: room.currentMax,
+    currentPlayer: room.currentPlayer,
+    rolls: room.rolls
+  });
+});
+
   // Disconnect
   socket.on('disconnect', async () => {
     await User.findByIdAndUpdate(userId, { online: false });
