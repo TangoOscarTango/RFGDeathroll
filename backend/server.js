@@ -222,6 +222,7 @@ io.on('connection', async (socket) => {
     chatColor: user.chatColor, // ✅ send this
     content: data.content,
     timestamp: msg.timestamp
+  });
 });
 
   // Private message
