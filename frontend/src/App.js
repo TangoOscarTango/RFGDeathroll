@@ -57,8 +57,14 @@ const App = () => {
 
   socket.current.on('game_over', (data) => {
     console.log('Game over received:', data);
-    setGameState((prev) => ({ ...prev, winner: data.winner, rolls: data.rolls }));
+    setGameState((prev) => ({
+      ...prev,
+      status: 'closed',
+      winner: data.winner,
+      rolls: data.rolls
+    }));
   });
+
 
   return () => {
     socket.current.disconnect();
