@@ -245,10 +245,6 @@ io.on('connection', async (socket) => {
   });
 });
 
-  socket.on('end_game', ({ roomId }) => {
-    socket.leave(roomId);
-  });
-
 const profileRoutes = require('./routes/profile');
 app.use('/api', profileRoutes);
 const chatRoutes = require('./routes/chat');
