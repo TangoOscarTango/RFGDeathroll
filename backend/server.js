@@ -22,9 +22,9 @@ const io = new Server(server, {
 });
 
 app.use(cors({
-  origin: 'https://rfgdeathroll-frontend.onrender.com',
+  origin: '*', // temporarily allow all origins for testing
   methods: ['GET', 'POST'],
-  credentials: true,
+  allowedHeaders: ['Content-Type', 'Authorization'],
 }));
 
 app.use(express.json());
