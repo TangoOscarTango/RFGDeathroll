@@ -243,7 +243,13 @@ io.on('connection', async (socket) => {
     io.to(`user:${to}`).emit('typing', { from: userId, isTyping });
   });
 
-  // Rolling the Dice
+  //Joining a game room
+  socket.on('join_room', ({ roomId }) => {
+    console.log(`[Socket] User ${userId} joining room ${roomId}`);
+    socket.join(roomId);
+  });
+  
+  // Rolling the dice
   socket.on('roll', async ({ roomId, userId }) => {
   console.log('ROLL RECEIVED:', { roomId, userId });
 
