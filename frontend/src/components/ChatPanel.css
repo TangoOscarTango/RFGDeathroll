@@ -36,6 +36,7 @@
 
 .chat-message {
   margin-bottom: 5px;
+  color: black; /* ✅ Set default chat message text to black */
 }
 
 .chat-message.own {
