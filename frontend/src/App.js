@@ -26,35 +26,36 @@ const App = () => {
   const socket = useRef(null);
 
   useEffect(() => {
-    socket.current = io(process.env.REACT_APP_API_URL, {
-  auth: {
-    token: localStorage.getItem('token') || user?.token
-  }
-});
+  if (!user) return;
 
-    socket.current.on('connect', () => {
-      console.log('[Socket] Connected:', socket.current.id);
-    });
-    
-    socket.current.on('connect_error', (err) => {
-      console.error('[Socket] Connection error:', err.message);
-    });
+  socket.current = io(process.env.REACT_APP_API_URL, {
+    auth: {
+      token: user.token
+    }
+  });
 
-    
-    socket.current.on('room_update', (data) => {
-      console.log('Room update received:', data);
-      setGameState((prev) => ({ ...prev, ...data }));
-    });
+  socket.current.on('connect', () => {
+    console.log('[Socket] Connected:', socket.current.id);
+  });
 
-    socket.current.on('game_over', (data) => {
-      console.log('Game over received:', data);
-      setGameState((prev) => ({ ...prev, winner: data.winner, rolls: data.rolls }));
-    });
+  socket.current.on('connect_error', (err) => {
+    console.error('[Socket] Connection error:', err.message);
+  });
 
-    return () => {
-      socket.current.disconnect();
-    };
-  }, []);
+  socket.current.on('room_update', (data) => {
+    console.log('Room update received:', data);
+    setGameState((prev) => ({ ...prev, ...data }));
+  });
+
+  socket.current.on('game_over', (data) => {
+    console.log('Game over received:', data);
+    setGameState((prev) => ({ ...prev, winner: data.winner, rolls: data.rolls }));
+  });
+
+  return () => {
+    socket.current.disconnect();
+  };
+}, [user]); // <== KEY: depends on user, not []
 
   useEffect(() => {
     if (roomId && socket.current) {
@@ -155,6 +156,7 @@ const App = () => {
       const decoded = jwtDecode(response.data.token);
       localStorage.setItem('token', response.data.token);
       setUser({ token: response.data.token, _id: decoded.userId, username, foxyPesos: 1000, profilePic: 0, borderPic: 0, unlockedProfilePics: '1000000', unlockedBorderPics: '100', soundOn: true, musicOn: true, });
+      console.log('[Auth] Setting user with token:', response.data.token);
       axios.defaults.headers.common['Authorization'] = `Bearer ${response.data.token}`;
       if (!isPlaying) toggleAudio();
       setAuthStep('initial');
@@ -182,6 +184,7 @@ const App = () => {
       });
       localStorage.setItem('token', response.data.token);
       setUser({ token: response.data.token, _id: decoded.userId, username: userData.data.username, foxyPesos: userData.data.foxyPesos, profilePic: userData.data.profilePic, borderPic: userData.data.borderPic, unlockedProfilePics: userData.data.unlockedProfilePics, unlockedBorderPics: userData.data.unlockedBorderPics, soundOn: userData.data.soundOn, musicOn: userData.data.musicOn, });
+      console.log('[Auth] Setting user with token:', response.data.token);
       axios.defaults.headers.common['Authorization'] = `Bearer ${response.data.token}`;
       if (!isPlaying) toggleAudio();
       setAuthStep('initial');
