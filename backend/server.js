@@ -212,14 +212,17 @@ io.on('connection', async (socket) => {
 
   // Global message
   socket.on('globalMessage', async (data) => {
-    const msg = new Message({ sender: userId, content: data.content });
-    await msg.save();
-    io.to('globalChat').emit('globalMessage', {
-      ...data,
-      senderId: userId,
-      timestamp: msg.timestamp
-    });
+  const user = await User.findById(userId).select('username');
+  const msg = new Message({ sender: userId, content: data.content });
+  await msg.save();
+
+  io.to('globalChat').emit('globalMessage', {
+    senderId: userId,
+    senderUsername: user.username, // ✅ required by frontend
+    content: data.content,
+    timestamp: msg.timestamp
   });
+});
 
   // Private message
   socket.on('privateMessage', async ({ to, content, contentType }) => {
