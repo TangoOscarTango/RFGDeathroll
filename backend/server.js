@@ -1,3 +1,5 @@
+// server.js — Main entry point, handles REST and socket logic
+
 const express = require('express');
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
@@ -6,6 +8,9 @@ const cors = require('cors');
 const { Server } = require('socket.io');
 const http = require('http');
 require('dotenv').config();
+const { socketAuth } = require('./utils/auth');
+const Message = require('./models/Message');
+const User = require('./models/User');
 
 const app = express();
 const server = http.createServer(app);
@@ -30,7 +35,6 @@ mongoose.connect(process.env.MONGODB_URI, {
 }).then(() => console.log('MongoDB connected'))
   .catch(err => console.log(err));
 
-const User = require('./models/User');
 const RoomSchema = new mongoose.Schema({
   roomId: { type: String, required: true, unique: true },
   player1: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
