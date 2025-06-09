@@ -47,6 +47,7 @@ const App = () => {
     setRooms((prev) => {
       const exists = prev.some((room) => room.roomId === newRoom.roomId);
       return exists ? prev : [...prev, newRoom];
+    });
   });
 
   socket.current.on('room_update', (data) => {
