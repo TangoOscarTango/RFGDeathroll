@@ -244,6 +244,9 @@ const App = () => {
       const response = await axios.post(`${process.env.REACT_APP_API_URL}/api/rooms/${id}/join`);
       console.log('Join room response received:', response.data);
       setRoomId(id);
+      if (socket.current && roomId) {
+        socket.current.emit('join_room', { roomId });
+      }
       setGameState(response.data);
     } catch (error) {
       console.error('Error joining room:', error.message);
