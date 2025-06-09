@@ -21,8 +21,9 @@ const ChatPanel = ({ user, socket }) => {
       .catch(err => console.error('Error loading global chat:', err));
 
     socket.on('globalMessage', (data) => {
-      setGlobalMessages((prev) => [...prev.slice(-24), data]); // Keep only 25 max
-    });
+  console.log('[Chat] Received message:', data); // ✅ Debug log
+  setGlobalMessages((prev) => [...prev.slice(-24), data]);
+});
 
     return () => {
       socket.off('globalMessage');
@@ -33,11 +34,12 @@ const ChatPanel = ({ user, socket }) => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [globalMessages]);
 
-  const sendMessage = () => {
-    if (!message.trim()) return;
-    socket.emit('globalMessage', { content: message });
-    setMessage('');
-  };
+const sendMessage = () => {
+  if (!message.trim()) return;
+  console.log('[Chat] Sending message:', message); // ✅ Debug log
+  socket.emit('globalMessage', { content: message });
+  setMessage('');
+};
 
   if (!user) return null;
 
