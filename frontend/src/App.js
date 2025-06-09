@@ -464,6 +464,7 @@ const App = () => {
           updateUser={(updated) => setUser((prev) => ({ ...prev, ...updated }))}
         />
       )}
+    {user && socket.current && <ChatPanel user={user} socket={socket.current} />}
     </div>
   );
 };
