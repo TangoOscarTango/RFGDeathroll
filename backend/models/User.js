@@ -12,7 +12,10 @@ const UserSchema = new mongoose.Schema({
   unlockedProfilePics: { type: String, default: '1000000' }, // 7 options
   unlockedBorderPics: { type: String, default: '100' },      // 3 options
   soundOn: { type: Boolean, default: true },
-  musicOn: { type: Boolean, default: true }
+  musicOn: { type: Boolean, default: true },
+  avatarURL: { type: String, default: '' },
+  statusMessage: { type: String, default: '' },
+  online: { type: Boolean, default: false }
 });
 
 module.exports = mongoose.model('User', UserSchema);
