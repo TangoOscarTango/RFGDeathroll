@@ -42,6 +42,13 @@ const App = () => {
     console.error('[Socket] Connection error:', err.message);
   });
 
+  socket.current.on('roomCreated', (newRoom) => {
+    console.log('[Socket] New room created:', newRoom);
+    setRooms((prev) => {
+      const exists = prev.some((room) => room.roomId === newRoom.roomId);
+      return exists ? prev : [...prev, newRoom];
+  });
+
   socket.current.on('room_update', (data) => {
     console.log('Room update received:', data);
     setGameState((prev) => ({ ...prev, ...data }));
