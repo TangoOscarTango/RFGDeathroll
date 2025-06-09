@@ -106,7 +106,7 @@ const App = () => {
     fetchRooms();
     checkActiveRoom();
     return () => clearInterval(keepAlive);
-  }, [rooms, roomId, gameState, user]);
+  }, [user]);
 
   const fetchRooms = async () => {
     try {
