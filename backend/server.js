@@ -266,9 +266,18 @@ io.on('connection', async (socket) => {
 
   if (roll === 1) {
     room.status = 'closed';
-    room.winner = room.player1._id.toString() === userId ? room.player2._id : room.player1._id;
+    room.winner = room.player1._id.toString() === userId
+      ? room.player2._id
+      : room.player1._id;
+  
+    const winnerUser = await User.findById(room.winner);
+    if (winnerUser) {
+      winnerUser.foxyPesos += room.wager * 2;
+      await winnerUser.save(); // ✅ credit the winner
+    }
+  
     await room.save();
-
+  
     io.to(roomId).emit('game_over', {
       winner: room.winner,
       loser: userId,
@@ -277,6 +286,7 @@ io.on('connection', async (socket) => {
     });
     return;
   }
+
 
   room.currentPlayer = room.player1._id.toString() === userId ? room.player2._id : room.player1._id;
   await room.save();
