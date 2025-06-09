@@ -15,7 +15,8 @@ const UserSchema = new mongoose.Schema({
   musicOn: { type: Boolean, default: true },
   avatarURL: { type: String, default: '' },
   statusMessage: { type: String, default: '' },
-  online: { type: Boolean, default: false }
+  online: { type: Boolean, default: false },
+  chatColor: { type: String, default: () => '#' + Math.floor(Math.random()*16777215).toString(16) }
 });
 
 module.exports = mongoose.model('User', UserSchema);
