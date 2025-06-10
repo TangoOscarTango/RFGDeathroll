@@ -119,6 +119,16 @@ app.get('/api/user', authenticateToken, async (req, res) => {
   res.json(user);
 });
 
+//Get Online users
+app.get('/api/online-users', async (req, res) => {
+  try {
+    const users = await User.find({ online: true }).select('username');
+    res.json(users);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch online users' });
+  }
+});
+
 //Post Rooms
 app.post('/api/rooms', authenticateToken, async (req, res) => {
   const { wager } = req.body;
