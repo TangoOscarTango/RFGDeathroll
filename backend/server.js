@@ -215,6 +215,13 @@ app.post('/api/clear-rooms', async (req, res) => {
   res.json({ message: 'Rooms cleared' });
 });
 
+//Post clear chat
+app.post('/api/clear-chat', async (req, res) => {
+  await Message.deleteMany({});
+  io.to('globalChat').emit('chatCleared');
+  res.json({ message: 'Chat cleared' });
+});
+
 io.use(socketAuth);
 
 io.on('connection', async (socket) => {
@@ -295,12 +302,8 @@ io.on('connection', async (socket) => {
   
     await room.save();
   
-    io.to(roomId).emit('game_over', {
-      winner: room.winner,
-      loser: userId,
-      finalRoll: roll,
-      rolls: room.rolls
-    });
+    const populatedRoom = await Room.findOne({ roomId }).populate('player1 player2 rolls.player currentPlayer');
+    io.to(roomId).emit('room_update', populatedRoom);
     return;
   }
 
