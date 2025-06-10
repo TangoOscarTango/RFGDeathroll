@@ -439,9 +439,6 @@ const App = () => {
               {gameState && (
                 <div>
                   <p>Status: {gameState.status}</p>
-                {gameState.status !== 'closed' && (
-                  <button onClick={updateGameState} className="button">Update</button>
-                )}
                   <p>Current Max: {gameState.currentMax || 'N/A'}</p>
                   <p>
                     Current Player:{' '}
@@ -463,12 +460,13 @@ const App = () => {
                         ? gameState.currentPlayer._id
                         : gameState.currentPlayer;
                       return (
-                        <div style={{ display: 'flex', gap: '10px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'center', gap: '20px', marginTop: '20px' }}>
                           {currentPlayerId === user._id && (
                             <button onClick={handleRoll} className="button">Roll</button>
                           )}
                           <button onClick={updateGameState} className="button">Update</button>
                         </div>
+
                       );
                     })()
                   )}
