@@ -288,6 +288,16 @@ const App = () => {
     }
   };
 
+  const updateGameState = async () => {
+    try {
+      const response = await axios.get(`${process.env.REACT_APP_API_URL}/api/rooms`);
+      const updatedRoom = response.data.find(r => r.roomId === roomId);
+      if (updatedRoom) setGameState(updatedRoom);
+    } catch (error) {
+      console.error('Error updating game state:', error.message);
+    }
+  };
+  
   const toggleAudio = () => {
     if (!audioRef.current) {
       audioRef.current = new Audio('https://rfgdeathroll-frontend.onrender.com/Deathroll.mp3');
@@ -418,7 +428,17 @@ const App = () => {
                 <div>
                   <p>Status: {gameState.status}</p>
                   <p>Current Max: {gameState.currentMax || 'N/A'}</p>
-                  <p>Current Player: {gameState.currentPlayer && user._id ? (gameState.currentPlayer._id === user._id ? 'You' : gameState.currentPlayer.username) : 'N/A'}</p>
+                  <p>
+                    Current Player:{' '}
+                    {(() => {
+                      if (!gameState.currentPlayer || !user?._id) return 'N/A';
+                      const playerId = typeof gameState.currentPlayer === 'object' ? gameState.currentPlayer._id : gameState.currentPlayer;
+                      if (playerId === user._id) return 'You';
+                      if (gameState.player1 && gameState.player1._id === playerId) return gameState.player1.username;
+                      if (gameState.player2 && gameState.player2._id === playerId) return gameState.player2.username;
+                      return 'Unknown';
+                    })()}
+                  </p>
                   {gameState.rolls && gameState.rolls.map((roll, i) => (
                     <p key={i}>{roll.player && user._id ? (roll.player._id === user._id ? 'You' : roll.player.username) : 'Unknown'} rolled: {roll.value}</p>
                   ))}
@@ -427,9 +447,14 @@ const App = () => {
                       const currentPlayerId = typeof gameState.currentPlayer === 'object'
                         ? gameState.currentPlayer._id
                         : gameState.currentPlayer;
-                      return currentPlayerId === user._id ? (
-                        <button onClick={handleRoll} className="button">Roll</button>
-                      ) : null;
+                      return (
+                        <div style={{ display: 'flex', gap: '10px' }}>
+                          {currentPlayerId === user._id && (
+                            <button onClick={handleRoll} className="button">Roll</button>
+                          )}
+                          <button onClick={updateGameState} className="button">Update</button>
+                        </div>
+                      );
                     })()
                   )}
                   {gameState.status === 'closed' && gameState.winner && (
