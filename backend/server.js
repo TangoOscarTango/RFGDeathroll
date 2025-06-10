@@ -179,12 +179,6 @@ app.post('/api/rooms/:id/roll', authenticateToken, async (req, res) => {
   await room.save();
   const populatedRoom = await Room.findOne({ roomId: room.roomId }).populate('player1 player2 rolls.player currentPlayer');
   io.to(room.roomId).emit('room_update', populatedRoom);
-  io.to(room.roomId).emit('room_update', {
-  roomId: room.roomId,
-  currentMax: room.currentMax,
-  currentPlayer: room.currentPlayer,
-  rolls: room.rolls
-});
   console.log('rollResult emitted to room', room.roomId, 'with value', rollValue);
   res.json({ rollValue });
   console.log('ROLL RESULT EMITTED:', { roomId: req.params.id, player: req.user.userId, value: rollValue });
@@ -293,12 +287,8 @@ io.on('connection', async (socket) => {
 
   room.currentPlayer = room.player1._id.toString() === userId ? room.player2._id : room.player1._id;
   await room.save();
-
-  io.to(roomId).emit('room_update', {
-    roomId: room.roomId,
-    currentMax: room.currentMax,
-    currentPlayer: room.currentPlayer,
-    rolls: room.rolls
+  const populatedRoom = await Room.findOne({ roomId: room.roomId }).populate('player1 player2 rolls.player currentPlayer');
+  io.to(room.roomId).emit('room_update', populatedRoom);
   });
 });
 
