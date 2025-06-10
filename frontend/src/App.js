@@ -7,6 +7,7 @@ import jwtDecode from 'jwt-decode';
 import './App.css';
 import ProfileModal from './components/ProfileModal';
 import ChatPanel from './components/ChatPanel';
+import OnlineUsersButton from './components/OnlineUsersButton';
 
 const App = () => {
   const [user, setUser] = useState(null);
