@@ -177,6 +177,8 @@ app.post('/api/rooms/:id/roll', authenticateToken, async (req, res) => {
     return res.json({ rollValue });
   }
   await room.save();
+  const populatedRoom = await Room.findOne({ roomId: room.roomId }).populate('player1 player2 rolls.player currentPlayer');
+  io.to(room.roomId).emit('room_update', populatedRoom);
   io.to(room.roomId).emit('room_update', {
   roomId: room.roomId,
   currentMax: room.currentMax,
