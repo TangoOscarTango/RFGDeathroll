@@ -65,9 +65,10 @@ const App = () => {
       const closedRoom = response.data.find((r) => r.roomId === roomId);
       if (closedRoom) setGameState(closedRoom);
     } catch (err) {
-      console.error('Error fetching game state after game_over:', err.message);
+      console.error('Error fetching room state after game_over:', err.message);
     }
   });
+
 
   return () => {
     socket.current.disconnect();
@@ -137,14 +138,28 @@ const App = () => {
     return () => clearInterval(keepAlive);
   }, [user]);
 
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchRooms();
+    }, 5000);
+    return () => clearInterval(interval);
+  }, []);
+
   const fetchRooms = async () => {
     try {
       const response = await axios.get(`${process.env.REACT_APP_API_URL}/api/rooms`);
-      setRooms(response.data);
+      const now = new Date();
+      const filtered = response.data.filter(room => {
+        if (room.status !== 'closed') return true;
+        const updatedAt = new Date(room.updatedAt);
+        return (now - updatedAt) < 10000; // keep if under 10s old
+      });
+      setRooms(filtered);
     } catch (error) {
       console.error('Error fetching rooms:', error.message);
     }
   };
+
 
   const checkCredentials = async () => {
     try {
