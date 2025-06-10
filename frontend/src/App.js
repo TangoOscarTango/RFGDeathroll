@@ -467,7 +467,7 @@ const App = () => {
             }}
           >
             {isPlaying ? '🔇' : '🎵'}
-          </button>1
+          </button>
           {/* Clear Rooms button, visible only if TESTING is true */}
           {TESTING && (
             <button
