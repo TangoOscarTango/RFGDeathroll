@@ -539,9 +539,15 @@ const App = () => {
           updateUser={(updated) => setUser((prev) => ({ ...prev, ...updated }))}
         />
       )}
-    {user && socket.current && <ChatPanel user={user} socket={socket.current} />}
+      {user && socket.current && (
+        <div style={{ display: 'flex', alignItems: 'flex-start' }}>
+          <ChatPanel user={user} socket={socket.current} />
+          <OnlineUsersButton />
+        </div>
+      )}
     </div>
   );
 };
 
 export default App;
+//End of code
