@@ -203,12 +203,6 @@ const App = () => {
       const response = await axios.post(`${process.env.REACT_APP_API_URL}/api/rooms`, { wager: wagerValue });
       console.log('Room created response received:', response.data);
       setRoomId(response.data.roomId);
-      useEffect(() => {
-            if (roomId && socket.current) {
-              console.log('[Socket] Emitting join_room for:', roomId);
-              socket.current.emit('join_room', { roomId });
-            }
-          }, [roomId]);
       setGameState(response.data);
       fetchRooms();
       setErrorMessage('');
@@ -239,12 +233,6 @@ const App = () => {
       const response = await axios.post(`${process.env.REACT_APP_API_URL}/api/rooms/${id}/join`);
       console.log('Join room response received:', response.data);
       setRoomId(id);
-      useEffect(() => {
-            if (roomId && socket.current) {
-              console.log('[Socket] Emitting join_room for:', roomId);
-              socket.current.emit('join_room', { roomId });
-            }
-          }, [roomId]);
       if (socket.current && roomId) {
         socket.current.emit('join_room', { roomId });
       }
@@ -254,6 +242,25 @@ const App = () => {
       if (user) setUser({ ...user, foxyPesos: originalFoxyPesos });
     }
   };
+
+  const handleRoll = () => {
+  console.log("ROLL BUTTON CLICKED");
+  if (roomId && user?._id) {
+    console.log("Emitting 'roll' with", { roomId, userId: user._id });
+    socket.current.emit('roll', { roomId, userId: user._id });
+  } else {
+    console.log("Roll failed: Missing roomId or user._id", { roomId, user });
+  }
+};
+
+const handleBackToHome = () => {
+  if (roomId) {
+    socket.current.emit('end_game', { roomId });
+  }
+  setIsPlaying(false);
+  setRoomId(null);
+  setGameState(null);
+};
 
   const fetchRoomStateWithRetry = async (roomId, retries = 5, delay = 1000) => {
     for (let i = 0; i < retries; i++) {
