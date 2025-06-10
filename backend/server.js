@@ -290,7 +290,6 @@ io.on('connection', async (socket) => {
   const populatedRoom = await Room.findOne({ roomId: room.roomId }).populate('player1 player2 rolls.player currentPlayer');
   io.to(room.roomId).emit('room_update', populatedRoom);
   });
-});
 
   // Disconnect
   socket.on('disconnect', async () => {
@@ -305,3 +304,5 @@ app.use('/api/chat', chatRoutes);
 
 const PORT = process.env.PORT || 3001;
 server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+
+//END OF CODE
