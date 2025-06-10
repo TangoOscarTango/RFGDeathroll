@@ -49,8 +49,9 @@ const RoomSchema = new mongoose.Schema({
   }],
   winner: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
 });
-const Room = mongoose.model('Room', RoomSchema);
 
+
+const Room = mongoose.model('Room', RoomSchema);
 const authenticateToken = (req, res, next) => {
   const token = req.headers['authorization']?.split(' ')[1];
   if (!token) return res.status(401).json({ error: 'No token provided' });
@@ -61,12 +62,14 @@ const authenticateToken = (req, res, next) => {
   });
 };
 
+//Post check email
 app.post('/api/check-email', async (req, res) => {
   const { email } = req.body;
   const user = await User.findOne({ email });
   res.json({ exists: !!user });
 });
 
+//Post signup
 app.post('/api/signup', async (req, res) => {
   console.log('Received signup request:', req.body);
   const { email, password, username } = req.body;
@@ -99,6 +102,7 @@ app.post('/api/signup', async (req, res) => {
   }
 });
 
+//Post login
 app.post('/api/login', async (req, res) => {
   const { email, password } = req.body;
   const user = await User.findOne({ email });
@@ -109,11 +113,13 @@ app.post('/api/login', async (req, res) => {
   res.json({ token, foxyPesos: user.foxyPesos });
 });
 
+//Get user
 app.get('/api/user', authenticateToken, async (req, res) => {
   const user = await User.findById(req.user.userId).select('-password');
   res.json(user);
 });
 
+//Post Rooms
 app.post('/api/rooms', authenticateToken, async (req, res) => {
   const { wager } = req.body;
   const user = await User.findById(req.user.userId);
@@ -133,6 +139,7 @@ app.post('/api/rooms', authenticateToken, async (req, res) => {
   res.json(room);
 });
 
+//Post Join
 app.post('/api/rooms/:id/join', authenticateToken, async (req, res) => {
   const room = await Room.findOne({ roomId: req.params.id }).populate('player1 player2');
   if (!room || room.status !== 'open') return res.status(400).json({ error: 'Room not available' });
@@ -150,6 +157,7 @@ app.post('/api/rooms/:id/join', authenticateToken, async (req, res) => {
   res.json(populatedRoom);
 });
 
+//Post Roll
 app.post('/api/rooms/:id/roll', authenticateToken, async (req, res) => {
   const room = await Room.findOne({ roomId: req.params.id }).populate('player1 player2');
   if (!room || room.status !== 'active') return res.status(400).json({ error: 'Room not active' });
@@ -184,11 +192,13 @@ app.post('/api/rooms/:id/roll', authenticateToken, async (req, res) => {
   console.log('ROLL RESULT EMITTED:', { roomId: req.params.id, player: req.user.userId, value: rollValue });
 });
 
+//Get rooms
 app.get('/api/rooms', async (req, res) => {
   const rooms = await Room.find().populate('player1 player2');
   res.json(rooms);
 });
 
+//Post clear rooms
 app.post('/api/clear-rooms', async (req, res) => {
   await Room.deleteMany({});
   io.emit('roomsCleared');
@@ -289,9 +299,9 @@ io.on('connection', async (socket) => {
   await room.save();
   const populatedRoom = await Room.findOne({ roomId: room.roomId }).populate('player1 player2 rolls.player currentPlayer');
   io.to(room.roomId).emit('room_update', populatedRoom);
-  });
+});
 
-  // Disconnect
+// Disconnect
   socket.on('disconnect', async () => {
     await User.findByIdAndUpdate(userId, { online: false });
   });
