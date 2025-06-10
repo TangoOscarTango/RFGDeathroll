@@ -103,6 +103,12 @@ const App = () => {
         const activeRoom = response.data.find(room => room.status === 'active' && (room.player1._id === user._id || (room.player2 && room.player2._id === user._id)));
         if (activeRoom) {
           setRoomId(activeRoom.roomId);
+          useEffect(() => {
+            if (roomId && socket.current) {
+              console.log('[Socket] Emitting join_room for:', roomId);
+              socket.current.emit('join_room', { roomId });
+            }
+          }, [roomId]);
           setGameState(activeRoom);
         }
       }
@@ -220,6 +226,12 @@ const App = () => {
       const response = await axios.post(`${process.env.REACT_APP_API_URL}/api/rooms`, { wager: wagerValue });
       console.log('Room created response received:', response.data);
       setRoomId(response.data.roomId);
+      useEffect(() => {
+            if (roomId && socket.current) {
+              console.log('[Socket] Emitting join_room for:', roomId);
+              socket.current.emit('join_room', { roomId });
+            }
+          }, [roomId]);
       setGameState(response.data);
       fetchRooms();
       setErrorMessage('');
@@ -250,6 +262,12 @@ const App = () => {
       const response = await axios.post(`${process.env.REACT_APP_API_URL}/api/rooms/${id}/join`);
       console.log('Join room response received:', response.data);
       setRoomId(id);
+      useEffect(() => {
+            if (roomId && socket.current) {
+              console.log('[Socket] Emitting join_room for:', roomId);
+              socket.current.emit('join_room', { roomId });
+            }
+          }, [roomId]);
       if (socket.current && roomId) {
         socket.current.emit('join_room', { roomId });
       }
