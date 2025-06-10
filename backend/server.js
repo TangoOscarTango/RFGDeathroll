@@ -48,7 +48,7 @@ const RoomSchema = new mongoose.Schema({
     value: { type: Number },
   }],
   winner: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-});
+}, { timestamps: true });
 
 
 const Room = mongoose.model('Room', RoomSchema);
