@@ -316,6 +316,15 @@ const App = () => {
     }
   };
 
+  const clearChat = async () => {
+    try {
+      await axios.post(`${process.env.REACT_APP_API_URL}/api/clear-chat`);
+      console.log('Chat cleared');
+    } catch (error) {
+      console.error('Error clearing chat:', error.message);
+    }
+  };
+
   const updateGameState = async () => {
     try {
       const response = await axios.get(`${process.env.REACT_APP_API_URL}/api/rooms`);
@@ -525,29 +534,50 @@ const App = () => {
             {isPlaying ? '🔇' : '🎵'}
           </button>
           {/* Clear Rooms button, visible only if TESTING is true */}
-          {TESTING && (
-            <button
-              onClick={clearRooms}
-              style={{
-                position: 'fixed',
-                bottom: '10px',
-                right: '10px',
-                width: '40px',
-                height: '40px',
-                background: 'transparent',
-                border: 'none',
-                cursor: 'pointer',
-                opacity: 0.7,
-                transition: 'opacity 0.3s',
-              }}
-              onMouseEnter={(e) => (e.target.style.opacity = 1)}
-              onMouseLeave={(e) => (e.target.style.opacity = 0.7)}
-            >
-              Clear Rooms
-            </button>
+          {user?.username === 'Kit Soon Nay' && (
+            <>
+              <button
+                onClick={clearRooms}
+                style={{
+                  position: 'fixed',
+                  bottom: '10px',
+                  right: '10px',
+                  width: '40px',
+                  height: '40px',
+                  background: 'transparent',
+                  border: 'none',
+                  cursor: 'pointer',
+                  opacity: 0.7,
+                  transition: 'opacity 0.3s',
+                }}
+                onMouseEnter={(e) => (e.target.style.opacity = 1)}
+                onMouseLeave={(e) => (e.target.style.opacity = 0.7)}
+              >
+                Clear Rooms
+              </button>
+          
+              <button
+                onClick={clearChat}
+                style={{
+                  position: 'fixed',
+                  bottom: '10px',
+                  right: '60px',
+                  width: '40px',
+                  height: '40px',
+                  background: 'transparent',
+                  border: 'none',
+                  cursor: 'pointer',
+                  opacity: 0.7,
+                  transition: 'opacity 0.3s',
+                }}
+                onMouseEnter={(e) => (e.target.style.opacity = 1)}
+                onMouseLeave={(e) => (e.target.style.opacity = 0.7)}
+              >
+                Clear Chat
+              </button>
+            </>
           )}
-        </div>
-      )}
+
       {showProfileModal && (
         <ProfileModal
           user={user}
