@@ -54,19 +54,19 @@ const App = () => {
 
   socket.current.on('room_update', (data) => {
     console.log('Room update received:', data);
-    setGameState((prev) => ({ ...prev, ...data }));
+    setGameState(data); // Do not merge
   });
 
-  socket.current.on('game_over', (data) => {
+  socket.current.on('game_over', async (data) => {
     console.log('Game over received:', data);
-    setGameState((prev) => ({
-      ...prev,
-      status: 'closed',
-      winner: data.winner,
-      rolls: data.rolls
-    }));
+    try {
+      const response = await axios.get(`${process.env.REACT_APP_API_URL}/api/rooms`);
+      const closedRoom = response.data.find((r) => r.roomId === roomId);
+      if (closedRoom) setGameState(closedRoom);
+    } catch (err) {
+      console.error('Error fetching game state after game_over:', err.message);
+    }
   });
-
 
   return () => {
     socket.current.disconnect();
@@ -76,8 +76,20 @@ const App = () => {
   useEffect(() => {
     if (roomId && socket.current) {
       socket.current.emit('join_room', { roomId });
+  
+      // Fetch latest room state after joining
+      (async () => {
+        try {
+          const response = await axios.get(`${process.env.REACT_APP_API_URL}/api/rooms`);
+          const joinedRoom = response.data.find((room) => room.roomId === roomId);
+          if (joinedRoom) setGameState(joinedRoom);
+        } catch (err) {
+          console.error('Failed to fetch room after joining:', err.message);
+        }
+      })();
     }
   }, [roomId]);
+
 
   const handleRoll = () => {
     console.log("ROLL BUTTON CLICKED");
@@ -427,6 +439,9 @@ const App = () => {
               {gameState && (
                 <div>
                   <p>Status: {gameState.status}</p>
+                {gameState.status !== 'closed' && (
+                  <button onClick={updateGameState} className="button">Update</button>
+                )}
                   <p>Current Max: {gameState.currentMax || 'N/A'}</p>
                   <p>
                     Current Player:{' '}
