@@ -21,63 +21,82 @@ const App = () => {
   const [errorMessage, setErrorMessage] = useState('');
   const [isPlaying, setIsPlaying] = useState(false);
   const [authStep, setAuthStep] = useState('initial');
-  const [TESTING, setTESTING] = useState(true);
+  const [TESTING, setTESTING] = useState(true); // TESTING toggle set to true
   const [showProfileModal, setShowProfileModal] = useState(false);
   const audioRef = useRef(null);
 
   const socket = useRef(null);
 
   useEffect(() => {
-    if (!user) return;
+  if (!user) return;
 
-    socket.current = io(process.env.REACT_APP_API_URL, {
-      auth: {
-        token: user.token
-      }
+  socket.current = io(process.env.REACT_APP_API_URL, {
+    auth: {
+      token: user.token
+    }
+  });
+
+  socket.current.on('connect', () => {
+    console.log('[Socket] Connected:', socket.current.id);
+  });
+
+  socket.current.on('connect_error', (err) => {
+    console.error('[Socket] Connection error:', err.message);
+  });
+
+  socket.current.on('roomCreated', (newRoom) => {
+    console.log('[Socket] New room created:', newRoom);
+    setRooms((prev) => {
+      const exists = prev.some((room) => room.roomId === newRoom.roomId);
+      return exists ? prev : [...prev, newRoom];
     });
+  });
 
-    socket.current.on('connect', () => {
-      console.log('[Socket] Connected:', socket.current.id);
-    });
+  socket.current.on('room_update', (data) => {
+    console.log('Room update received:', data);
+    setGameState((prev) => ({ ...prev, ...data }));
+  });
 
-    socket.current.on('connect_error', (err) => {
-      console.error('[Socket] Connection error:', err.message);
-    });
+  socket.current.on('game_over', (data) => {
+    console.log('Game over received:', data);
+    setGameState((prev) => ({
+      ...prev,
+      status: 'closed',
+      winner: data.winner,
+      rolls: data.rolls
+    }));
+  });
 
-    socket.current.on('roomCreated', (newRoom) => {
-      console.log('[Socket] New room created:', newRoom);
-      setRooms((prev) => {
-        const exists = prev.some((room) => room.roomId === newRoom.roomId);
-        return exists ? prev : [...prev, newRoom];
-      });
-    });
 
-    socket.current.on('room_update', (data) => {
-      console.log('Room update received:', data);
-      setGameState((prev) => ({ ...prev, ...data }));
-    });
-
-    socket.current.on('game_over', (data) => {
-      console.log('Game over received:', data);
-      setGameState((prev) => ({
-        ...prev,
-        status: 'closed',
-        winner: data.winner,
-        rolls: data.rolls
-      }));
-    });
-
-    return () => {
-      socket.current.disconnect();
-    };
-  }, [user]);
+  return () => {
+    socket.current.disconnect();
+  };
+}, [user]); // <== KEY: depends on user, not []
 
   useEffect(() => {
     if (roomId && socket.current) {
-      console.log('[Socket] Emitting join_room for:', roomId);
       socket.current.emit('join_room', { roomId });
     }
   }, [roomId]);
+
+  const handleRoll = () => {
+    console.log("ROLL BUTTON CLICKED");
+    if (roomId && user?._id) {
+      console.log("Emitting 'roll' with", { roomId, userId: user._id });
+      socket.current.emit('roll', { roomId, userId: user._id });
+    } else {
+      console.log("Roll failed: Missing roomId or user._id", { roomId, user });
+    }
+  };
+
+  const handleBackToHome = () => {
+    if (roomId) {
+      socket.current.emit('end_game', { roomId });
+    }
+    setIsPlaying(false);
+    setRoomId(null);
+    setGameState(null);
+  };
 
   useEffect(() => {
     const checkActiveRoom = async () => {
@@ -243,25 +262,6 @@ const App = () => {
     }
   };
 
-  const handleRoll = () => {
-  console.log("ROLL BUTTON CLICKED");
-  if (roomId && user?._id) {
-    console.log("Emitting 'roll' with", { roomId, userId: user._id });
-    socket.current.emit('roll', { roomId, userId: user._id });
-  } else {
-    console.log("Roll failed: Missing roomId or user._id", { roomId, user });
-  }
-};
-
-const handleBackToHome = () => {
-  if (roomId) {
-    socket.current.emit('end_game', { roomId });
-  }
-  setIsPlaying(false);
-  setRoomId(null);
-  setGameState(null);
-};
-
   const fetchRoomStateWithRetry = async (roomId, retries = 5, delay = 1000) => {
     for (let i = 0; i < retries; i++) {
       try {
@@ -307,8 +307,8 @@ const handleBackToHome = () => {
     setIsPlaying(!isPlaying);
   };
 
-return (
-  <div className="container">
+  return (
+    <div className="container">
       <h1>Death Roll</h1>
       {!user ? (
         <div className="auth-form">
