@@ -29,51 +29,51 @@ const App = () => {
   const socket = useRef(null);
 
   useEffect(() => {
-  if (!user) return;
+    if (!user) return;
 
-  socket.current = io(process.env.REACT_APP_API_URL, {
-    auth: {
-      token: user.token
-    }
-  });
-
-  socket.current.on('connect', () => {
-    console.log('[Socket] Connected:', socket.current.id);
-  });
-
-  socket.current.on('connect_error', (err) => {
-    console.error('[Socket] Connection error:', err.message);
-  });
-
-  socket.current.on('roomCreated', (newRoom) => {
-    console.log('[Socket] New room created:', newRoom);
-    setRooms((prev) => {
-      const exists = prev.some((room) => room.roomId === newRoom.roomId);
-      return exists ? prev : [...prev, newRoom];
+    socket.current = io(process.env.REACT_APP_API_URL, {
+      auth: {
+        token: user.token
+      }
     });
-  });
 
-  socket.current.on('room_update', (data) => {
-    console.log('Room update received:', data);
-    setGameState(data); // Do not merge
-  });
+    socket.current.on('connect', () => {
+      console.log('[Socket] Connected:', socket.current.id);
+    });
 
-  socket.current.on('game_over', async (data) => {
-    console.log('Game over received:', data);
-    try {
-      const response = await axios.get(`${process.env.REACT_APP_API_URL}/api/rooms`);
-      const closedRoom = response.data.find((r) => r.roomId === roomId);
-      if (closedRoom) setGameState(closedRoom);
-    } catch (err) {
-      console.error('Error fetching room state after game_over:', err.message);
-    }
-  });
+    socket.current.on('connect_error', (err) => {
+      console.error('[Socket] Connection error:', err.message);
+    });
+
+    socket.current.on('roomCreated', (newRoom) => {
+      console.log('[Socket] New room created:', newRoom);
+      setRooms((prev) => {
+        const exists = prev.some((room) => room.roomId === newRoom.roomId);
+        return exists ? prev : [...prev, newRoom];
+      });
+    });
+
+    socket.current.on('room_update', (data) => {
+      console.log('Room update received:', data);
+      setGameState(data); // Do not merge
+    });
+
+    socket.current.on('game_over', async (data) => {
+      console.log('Game over received:', data);
+      try {
+        const response = await axios.get(`${process.env.REACT_APP_API_URL}/api/rooms`);
+        const closedRoom = response.data.find((r) => r.roomId === roomId);
+        if (closedRoom) setGameState(closedRoom);
+      } catch (err) {
+        console.error('Error fetching room state after game_over:', err.message);
+      }
+    });
 
 
-  return () => {
-    socket.current.disconnect();
-  };
-}, [user]); // <== KEY: depends on user, not []
+    return () => {
+      socket.current.disconnect();
+    };
+  }, [user]); // <== KEY: depends on user, not []
 
   useEffect(() => {
     if (roomId && socket.current) {
@@ -563,4 +563,12 @@ const App = () => {
       )}
       {user && socket.current && (
         <div style={{ display: 'flex', alignItems: 'flex-start' }}>
-          <ChatPanel
+          <ChatPanel user={user} socket={socket.current} />
+          <OnlineUsersButton />
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default App;
