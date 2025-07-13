@@ -1,4 +1,4 @@
-// server.js — Main entry point, handles REST and socket logic
+// backend - server.js — Main entry point, handles REST and socket logic
 
 const express = require('express');
 const mongoose = require('mongoose');
@@ -16,7 +16,7 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: 'https://rfgdeathroll-frontend.onrender.com',
+    origin: '*', // MVP: Allow all for demo; restrict in prod
     methods: ['GET', 'POST'],
   },
 });
@@ -49,7 +49,6 @@ const RoomSchema = new mongoose.Schema({
   }],
   winner: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
 }, { timestamps: true });
-
 
 const Room = mongoose.model('Room', RoomSchema);
 const authenticateToken = (req, res, next) => {
@@ -169,37 +168,55 @@ app.post('/api/rooms/:id/join', authenticateToken, async (req, res) => {
 
 //Post Roll
 app.post('/api/rooms/:id/roll', authenticateToken, async (req, res) => {
-  const room = await Room.findOne({ roomId: req.params.id }).populate('player1 player2');
-  if (!room || room.status !== 'active') return res.status(400).json({ error: 'Room not active' });
-  if (room.currentPlayer.toString() !== req.user.userId) return res.status(400).json({ error: 'Not your turn' });
-  
-  // Fix: Roll from 1 to currentMax - 1
-  const maxRoll = room.currentMax || room.wager; // Use wager as initial max if currentMax is unset
-  const rollValue = Math.floor(Math.random() * (maxRoll - 1)) + 1;
-  
-  room.rolls.push({ player: req.user.userId, value: rollValue });
-  room.currentMax = rollValue;
-  room.currentPlayer = room.player1._id.toString() === req.user.userId ? room.player2._id : room.player1._id;
-  if (rollValue === 1) {
-    room.status = 'closed';
-    const winner = room.currentPlayer;
-    room.winner = winner;
-    const loserId = room.player1._id.toString() === winner.toString() ? room.player2._id : room.player1._id;
-    const winnerUser = await User.findById(winner);
-    const loserUser = await User.findById(loserId);
-    winnerUser.foxyPesos += room.wager * 2;
-    await winnerUser.save();
-    await loserUser.save();
+  try {
+    const room = await Room.findOne({ roomId: req.params.id }).populate(
+      'player1 player2'
+    );
+    if (!room || room.status !== 'active') {
+      return res.status(400).json({ error: 'Room not active' });
+    }
+    if (room.currentPlayer.toString() !== req.user.userId) {
+      return res.status(400).json({ error: 'Not your turn' });
+    }
+
+    const maxRoll = room.currentMax || room.wager;
+    const rollValue = Math.floor(Math.random() * maxRoll) + 1; // 1 to maxRoll
+
+    room.rolls.push({ player: req.user.userId, value: rollValue });
+    room.currentMax = rollValue - 1; // KEY FIX: Subtract 1 as per rules
+
+    if (rollValue === 1) {
+      room.status = 'closed';
+      room.winner =
+        room.player1._id.toString() === req.user.userId
+          ? room.player2._id
+          : room.player1._id;
+      const winnerUser = await User.findById(room.winner);
+      winnerUser.foxyPesos += room.wager * 2;
+      await winnerUser.save();
+      await room.save();
+      io.to(room.roomId).emit('gameEnded', {
+        roomId: room.roomId,
+        winner: room.winner,
+      });
+      return res.json({ rollValue });
+    }
+
+    room.currentPlayer =
+      room.player1._id.toString() === req.user.userId
+        ? room.player2._id
+        : room.player1._id;
     await room.save();
-    io.emit('gameEnded', { roomId: room.roomId, winner: winner._id });
-    return res.json({ rollValue });
+
+    const populatedRoom = await Room.findOne({ roomId: room.roomId }).populate(
+      'player1 player2 rolls.player currentPlayer'
+    );
+    io.to(room.roomId).emit('room_update', populatedRoom);
+    res.json({ rollValue });
+  } catch (err) {
+    console.error('Roll error:', err);
+    res.status(500).json({ error: 'Server error' });
   }
-  await room.save();
-  const populatedRoom = await Room.findOne({ roomId: room.roomId }).populate('player1 player2 rolls.player currentPlayer');
-  io.to(room.roomId).emit('room_update', populatedRoom);
-  console.log('rollResult emitted to room', room.roomId, 'with value', rollValue);
-  res.json({ rollValue });
-  console.log('ROLL RESULT EMITTED:', { roomId: req.params.id, player: req.user.userId, value: rollValue });
 });
 
 //Get rooms
@@ -327,5 +344,3 @@ app.use('/api/chat', chatRoutes);
 
 const PORT = process.env.PORT || 3001;
 server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
-
-//END OF CODE
