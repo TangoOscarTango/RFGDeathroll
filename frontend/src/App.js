@@ -1,4 +1,4 @@
-// App.js — Main React component for DeathRoll frontend
+// frontend - App.js — Main React component for DeathRoll frontend
 
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
@@ -93,13 +93,19 @@ const App = () => {
   }, [roomId]);
 
 
-  const handleRoll = () => {
-    console.log("ROLL BUTTON CLICKED");
-    if (roomId && user?._id) {
-      console.log("Emitting 'roll' with", { roomId, userId: user._id });
-      socket.current.emit('roll', { roomId, userId: user._id });
-    } else {
-      console.log("Roll failed: Missing roomId or user._id", { roomId, user });
+  const handleRoll = async () => {
+    try {
+      const response = await axios.post(
+        `${process.env.REACT_APP_API_URL}/api/rooms/${roomId}/roll`
+      );
+      // Update local state immediately for snappier UX
+      setGameState((prev) => ({
+        ...prev,
+        rolls: [...prev.rolls, { player: user._id, value: response.data.rollValue }],
+        currentMax: response.data.rollValue - 1, // Reflect -1 adjustment
+      }));
+    } catch (err) {
+      setErrorMessage('Roll failed: ' + err.message);
     }
   };
 
@@ -557,13 +563,4 @@ const App = () => {
       )}
       {user && socket.current && (
         <div style={{ display: 'flex', alignItems: 'flex-start' }}>
-          <ChatPanel user={user} socket={socket.current} />
-          <OnlineUsersButton />
-        </div>
-      )}
-    </div>
-  );
-};
-
-export default App;
-//End of code
+          <ChatPanel
